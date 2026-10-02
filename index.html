@@ -1,0 +1,76 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Admin Lembaga Sosial</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="sbOverlay" class="sidebar-overlay"></div>
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">🤝</div>
+      <h2>Lembaga Sosial</h2>
+      <p>Panel Admin</p>
+    </div>
+                <nav class="sidebar-nav">
+      <div class="nav-label">Menu Utama</div>
+      <a href="index.html" class="nav-item active"><span class="icon">🏠</span> Dashboard</a>
+      <div class="nav-label">Donatur Rutin</div>
+      <a href="donatur-rutin.html" class="nav-item"><span class="icon">💚</span> Donatur Rutin</a>
+      <div class="nav-label">Kotak Infaq</div>
+      <a href="kotak-infaq.html" class="nav-item"><span class="icon">🗃️</span> Kotak Infaq</a>
+      <a href="kcs.html" class="nav-item"><span class="icon">📦</span> KCS</a>
+      <div class="nav-label">Waqaf</div>
+      <a href="waqaf.html" class="nav-item"><span class="icon">🕌</span> Program Waqaf</a>
+      <div class="nav-label">Laporan</div>
+      <a href="laporan-donatur.html" class="nav-item"><span class="icon">💚</span> Lap. Donatur Rutin</a>
+      <a href="laporan-kotak.html" class="nav-item"><span class="icon">🗃️</span> Lap. Kotak Infaq</a>
+      <a href="laporan-kcs.html" class="nav-item"><span class="icon">📦</span> Lap. KCS</a>
+      <div class="nav-label">Import/Export</div>
+      <a href="import.html" class="nav-item"><span class="icon">📥</span> Import Data</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="avatar">A</div>
+      <div class="user-info">
+        <div class="user-name">Administrator</div>
+        <div class="user-role">Super Admin</div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="header">
+      <button class="header-menu" id="menuBtn">☰</button>
+      <div class="header-title">Dashboard</div>
+      <div class="header-right">
+        <span class="header-date" id="headerDate"></span>
+      </div>
+    </header>
+
+    <div class="page">
+      <!-- Welcome -->
+      <div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <h1 style="font-size:20px;font-weight:800;color:var(--gray-900)">Selamat Datang 👋</h1>
+          <p style="color:var(--gray-500);font-size:13px;margin-top:2px">Ringkasan seluruh data lembaga sosial</p>
+        </div>
+        <div style="display:flex;gap:8px">
+          <a href="laporan-donatur.html" class="btn btn-outline btn-sm">📊 Laporan</a>
+          <a href="import.html" class="btn btn-outline btn-sm">📥 Import Data</a>
+        </div>
+      </div>
+
+      <div id="dashContent"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+</div>
+<div id="toast-wrap"></div>
+<script src="js/app.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

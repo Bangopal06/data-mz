@@ -1,0 +1,121 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Program Waqaf - Admin Lembaga Sosial</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="sbOverlay" class="sidebar-overlay"></div>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><div class="brand-icon">🤝</div><h2>Lembaga Sosial</h2><p>Panel Admin</p></div>
+                <nav class="sidebar-nav">
+      <div class="nav-label">Menu Utama</div>
+      <a href="index.html" class="nav-item"><span class="icon">🏠</span> Dashboard</a>
+      <div class="nav-label">Donatur Rutin</div>
+      <a href="donatur-rutin.html" class="nav-item "><span class="icon">💚</span> Donatur Rutin</a>
+      <div class="nav-label">Kotak Infaq</div>
+      <a href="kotak-infaq.html" class="nav-item "><span class="icon">🗃️</span> Kotak Infaq</a>
+      <a href="kcs.html" class="nav-item "><span class="icon">📦</span> KCS</a>
+      <div class="nav-label">Waqaf</div>
+      <a href="waqaf.html" class="nav-item active"><span class="icon">🕌</span> Program Waqaf</a>
+      <div class="nav-label">Laporan</div>
+      <a href="laporan-donatur.html" class="nav-item "><span class="icon">💚</span> Lap. Donatur Rutin</a>
+      <a href="laporan-kotak.html" class="nav-item "><span class="icon">🗃️</span> Lap. Kotak Infaq</a>
+      <a href="laporan-kcs.html" class="nav-item CS"><span class="icon">📦</span> Lap. KCS</a>
+      <div class="nav-label">Import/Export</div>
+      <a href="import.html" class="nav-item "><span class="icon">📥</span> Import Data</a>
+    </nav>
+    <div class="sidebar-footer"><div class="avatar">A</div><div class="user-info"><div class="user-name">Administrator</div><div class="user-role">Super Admin</div></div></div>
+  </aside>
+
+  <div class="main">
+    <header class="header">
+      <button class="header-menu" id="menuBtn">☰</button>
+      <div class="header-title">🕌 Program Waqaf</div>
+      <div class="header-right"><span class="header-date" id="headerDate"></span></div>
+    </header>
+
+    <div class="page">
+      <div class="stats" id="wqStats"></div>
+
+      <div class="card">
+        <div class="card-head" style="padding-bottom:0;border-bottom:none">
+          <div id="wqTabs" class="tabs" style="border-bottom:1px solid var(--gray-200);margin-bottom:0;flex:1">
+            <button class="tab active" data-target="paneProgram">🕌 Program Waqaf <span class="cnt" id="cntProg">0</span></button>
+            <button class="tab" data-target="paneDonaturWQ">💚 Donatur Waqaf <span class="cnt" id="cntDonWQ">0</span></button>
+            <button class="tab" data-target="paneProspekWQ">👤 Prospek <span class="cnt" id="cntProsWQ">0</span></button>
+          </div>
+          <div style="padding:12px 0 12px 16px;display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm" onclick="exportWQ()">⬇️ Export</button>
+            <button class="btn btn-primary btn-sm" id="btnTambahWQ">+ Tambah</button>
+          </div>
+        </div>
+
+        <!-- Program Waqaf -->
+        <div id="paneProgram" class="tab-pane active" style="padding:16px 20px">
+          <div class="filters mb3">
+            <input type="text" id="srProg" class="inp" placeholder="🔍 Cari program...">
+            <select id="flKatProg" class="sel">
+              <option value="">Semua Kategori</option>
+              <option value="masjid">Masjid</option>
+              <option value="pendidikan">Pendidikan</option>
+              <option value="kesehatan">Kesehatan</option>
+              <option value="sosial">Sosial</option>
+            </select>
+            <select id="flStProg" class="sel">
+              <option value="">Semua Status</option>
+              <option value="aktif">Aktif</option>
+              <option value="selesai">Selesai</option>
+            </select>
+          </div>
+          <div class="prog-grid" id="progGrid"></div>
+          <div id="pagProg" style="margin-top:12px"></div>
+        </div>
+
+        <!-- Donatur Waqaf -->
+        <div id="paneDonaturWQ" class="tab-pane" style="padding:16px 20px">
+          <div class="filters mb3">
+            <input type="text" id="srDonWQ" class="inp" placeholder="🔍 Cari nama...">
+            <select id="flProgDon" class="sel"><option value="">Semua Program</option></select>
+            <select id="flStDon" class="sel">
+              <option value="">Semua Status</option>
+              <option value="lunas">Lunas</option>
+              <option value="cicilan">Cicilan</option>
+              <option value="pending">Pending</option>
+            </select>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Nama</th><th>HP</th><th>Program</th><th>Nominal</th><th>Tgl Donasi</th><th>Metode</th><th>Status</th><th>Petugas</th><th>Aksi</th></tr></thead>
+              <tbody id="tblDonWQ"></tbody>
+            </table>
+          </div>
+          <div class="card-foot" id="pagDonWQ"></div>
+        </div>
+
+        <!-- Prospek Waqaf -->
+        <div id="paneProspekWQ" class="tab-pane" style="padding:16px 20px">
+          <div class="filters mb3">
+            <input type="text" id="srProsWQ" class="inp" placeholder="🔍 Cari nama...">
+            <select id="flProgPros" class="sel"><option value="">Semua Program</option></select>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Nama</th><th>HP</th><th>Kota</th><th>Program Minat</th><th>Potensi</th><th>Status</th><th>Petugas</th><th>Catatan</th><th>Aksi</th></tr></thead>
+              <tbody id="tblProsWQ"></tbody>
+            </table>
+          </div>
+          <div class="card-foot" id="pagProsWQ"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast-wrap"></div>
+<script src="js/app.js"></script>
+<script src="js/waqaf.js"></script>
+</body>
+</html>

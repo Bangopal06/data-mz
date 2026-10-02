@@ -1,0 +1,147 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laporan KCS - Admin Lembaga Sosial</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .period-bar{background:white;border-radius:10px;border:1px solid var(--gray-200);padding:14px 20px;margin-bottom:20px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+    .period-bar .fg{min-width:130px;flex:1}
+    .section-title{font-size:14px;font-weight:700;color:var(--gray-700);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+    tfoot tr td{font-weight:700;background:var(--gray-50)}
+    @media print{.no-print{display:none}}
+  </style>
+</head>
+<body>
+<div id="sbOverlay" class="sidebar-overlay"></div>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><div class="brand-icon">🤝</div><h2>Lembaga Sosial</h2><p>Panel Admin</p></div>
+                <nav class="sidebar-nav">
+      <div class="nav-label">Menu Utama</div>
+      <a href="index.html" class="nav-item"><span class="icon">🏠</span> Dashboard</a>
+      <div class="nav-label">Donatur Rutin</div>
+      <a href="donatur-rutin.html" class="nav-item"><span class="icon">💚</span> Donatur Rutin</a>
+      <div class="nav-label">Kotak Infaq</div>
+      <a href="kotak-infaq.html" class="nav-item"><span class="icon">🗃️</span> Kotak Infaq</a>
+      <a href="kcs.html" class="nav-item"><span class="icon">📦</span> KCS</a>
+      <div class="nav-label">Waqaf</div>
+      <a href="waqaf.html" class="nav-item"><span class="icon">🕌</span> Program Waqaf</a>
+      <div class="nav-label">Laporan</div>
+      <a href="laporan-donatur.html" class="nav-item"><span class="icon">💚</span> Lap. Donatur Rutin</a>
+      <a href="laporan-kotak.html" class="nav-item"><span class="icon">🗃️</span> Lap. Kotak Infaq</a>
+      <a href="laporan-kcs.html" class="nav-item active"><span class="icon">📦</span> Lap. KCS</a>
+      <div class="nav-label">Import/Export</div>
+      <a href="import.html" class="nav-item"><span class="icon">📥</span> Import Data</a>
+    </nav>
+    <div class="sidebar-footer"><div class="avatar">A</div><div class="user-info"><div class="user-name">Administrator</div><div class="user-role">Super Admin</div></div></div>
+  </aside>
+
+  <div class="main">
+    <header class="header">
+      <button class="header-menu" id="menuBtn">☰</button>
+      <div class="header-title">📦 Laporan KCS</div>
+      <div class="header-right">
+        <span class="header-date" id="headerDate"></span>
+        <button class="btn btn-outline btn-sm no-print" onclick="exportLapKCS()">⬇️ Export Excel</button>
+        <button class="btn btn-primary btn-sm no-print" onclick="window.print()">🖨️ Print</button>
+      </div>
+    </header>
+
+    <div class="page">
+      <!-- Filter -->
+      <div class="period-bar no-print">
+        <div class="fg"><label class="flabel">Bulan</label>
+          <select id="lkBulan" class="fctrl" onchange="renderLapKCS()">
+            <option value="01">Januari</option><option value="02">Februari</option>
+            <option value="03">Maret</option><option value="04">April</option>
+            <option value="05">Mei</option><option value="06">Juni</option>
+            <option value="07">Juli</option><option value="08">Agustus</option>
+            <option value="09">September</option><option value="10">Oktober</option>
+            <option value="11">November</option><option value="12">Desember</option>
+          </select>
+        </div>
+        <div class="fg"><label class="flabel">Tahun</label>
+          <select id="lkTahun" class="fctrl" onchange="renderLapKCS()"></select>
+        </div>
+        <div class="fg"><label class="flabel">Kota</label>
+          <select id="lkKota" class="fctrl" onchange="renderLapKCS()"><option value="">Semua Kota</option></select>
+        </div>
+        <div class="fg"><label class="flabel">Petugas</label>
+          <select id="lkPetugas" class="fctrl" onchange="renderLapKCS()"><option value="">Semua Petugas</option></select>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats" id="lkStats" style="margin-bottom:20px"></div>
+
+      <!-- Sudah Diambil -->
+      <div style="margin-bottom:24px">
+        <div class="section-title">
+          <span style="width:10px;height:10px;border-radius:50%;background:var(--success);display:inline-block"></span>
+          ✅ Sudah Diambil Bulan Ini <span id="lkCntSudah" class="badge b-green" style="margin-left:4px">0</span>
+        </div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Nama KCS</th><th>Nama Toko</th><th>Alamat</th><th>Kota</th><th>Tgl Ambil</th><th>Nominal</th><th>Petugas</th><th>Catatan</th></tr></thead>
+              <tbody id="lkTblSudah"></tbody>
+              <tfoot id="lkFootSudah"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Belum Diambil -->
+      <div style="margin-bottom:24px">
+        <div class="section-title">
+          <span style="width:10px;height:10px;border-radius:50%;background:var(--danger);display:inline-block"></span>
+          ⏳ Belum Diambil Bulan Ini <span id="lkCntBelum" class="badge b-red" style="margin-left:4px">0</span>
+        </div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Nama KCS</th><th>Nama Toko</th><th>Alamat</th><th>Kota</th><th>Frekuensi</th><th>Terakhir Diambil</th><th>Nominal Terakhir</th><th>Petugas</th></tr></thead>
+              <tbody id="lkTblBelum"></tbody>
+              <tfoot id="lkFootBelum"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rekap per KCS -->
+      <div style="margin-bottom:24px">
+        <div class="section-title">📦 Rekap Per KCS Bulan Ini</div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Nama KCS</th><th>Toko</th><th>Kota</th><th>Jml Ambil</th><th>Total Bulan Ini</th><th>Status</th></tr></thead>
+              <tbody id="lkTblRekap"></tbody>
+              <tfoot id="lkFootRekap"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rekap Bulanan -->
+      <div>
+        <div class="section-title">📅 Rekap Bulanan Tahun Ini</div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Bulan</th><th>Jml Pengambilan</th><th>KCS Diambil</th><th>KCS Belum</th><th>Total Terkumpul</th><th>Rata-rata/KCS</th></tr></thead>
+              <tbody id="lkTblBulanan"></tbody>
+              <tfoot id="lkFootBulanan"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast-wrap"></div>
+<script src="js/app.js"></script>
+<script src="js/laporan-kcs.js"></script>
+</body>
+</html>

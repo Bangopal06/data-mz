@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Import Data - Admin Lembaga Sosial</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .import-card {
+      background: white; border-radius: 12px; border: 1px solid var(--gray-200);
+      padding: 24px; box-shadow: var(--shadow); margin-bottom: 20px;
+    }
+    .drop-zone {
+      border: 2px dashed var(--gray-300); border-radius: 10px;
+      padding: 40px; text-align: center; cursor: pointer;
+      transition: all .2s; background: var(--gray-50);
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--primary); background: var(--primary-light);
+    }
+    .drop-zone .dz-icon { font-size: 48px; margin-bottom: 12px; }
+    .drop-zone .dz-title { font-size: 15px; font-weight: 700; color: var(--gray-700); margin-bottom: 6px; }
+    .drop-zone .dz-sub { font-size: 13px; color: var(--gray-400); }
+    .drop-zone .dz-formats { margin-top: 12px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .format-badge { background: white; border: 1px solid var(--gray-200); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--gray-600); }
+    .preview-table { font-size: 12px; }
+    .preview-table th { font-size: 11px; padding: 6px 10px; }
+    .preview-table td { padding: 5px 10px; }
+    .map-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--gray-100); }
+    .map-row:last-child { border-bottom: none; }
+    .map-col-excel { font-size: 12px; font-weight: 600; color: var(--gray-700); min-width: 160px; background: var(--gray-50); padding: 6px 10px; border-radius: 6px; }
+    .map-arrow { color: var(--gray-400); font-size: 16px; }
+    .map-col-system { flex: 1; }
+    .result-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--gray-100); }
+    .result-item:last-child { border-bottom: none; }
+    .ri-ok { color: var(--success); }
+    .ri-err { color: var(--danger); }
+    .template-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--gray-200); background: white; cursor: pointer; transition: all .15s; color: var(--gray-700); }
+    .template-btn:hover { background: var(--gray-50); border-color: var(--gray-300); }
+  </style>
+</head>
+<body>
+<div id="sbOverlay" class="sidebar-overlay"></div>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><div class="brand-icon">🤝</div><h2>Lembaga Sosial</h2><p>Panel Admin</p></div>
+                <nav class="sidebar-nav">
+      <div class="nav-label">Menu Utama</div>
+      <a href="index.html" class="nav-item"><span class="icon">🏠</span> Dashboard</a>
+      <div class="nav-label">Donatur Rutin</div>
+      <a href="donatur-rutin.html" class="nav-item "><span class="icon">💚</span> Donatur Rutin</a>
+      <div class="nav-label">Kotak Infaq</div>
+      <a href="kotak-infaq.html" class="nav-item "><span class="icon">🗃️</span> Kotak Infaq</a>
+      <a href="kcs.html" class="nav-item "><span class="icon">📦</span> KCS</a>
+      <div class="nav-label">Waqaf</div>
+      <a href="waqaf.html" class="nav-item "><span class="icon">🕌</span> Program Waqaf</a>
+      <div class="nav-label">Laporan</div>
+      <a href="laporan-donatur.html" class="nav-item "><span class="icon">💚</span> Lap. Donatur Rutin</a>
+      <a href="laporan-kotak.html" class="nav-item "><span class="icon">🗃️</span> Lap. Kotak Infaq</a>
+      <a href="laporan-kcs.html" class="nav-item CS"><span class="icon">📦</span> Lap. KCS</a>
+      <div class="nav-label">Import/Export</div>
+      <a href="import.html" class="nav-item active"><span class="icon">📥</span> Import Data</a>
+    </nav>
+    <div class="sidebar-footer"><div class="avatar">A</div><div class="user-info"><div class="user-name">Administrator</div><div class="user-role">Super Admin</div></div></div>
+  </aside>
+
+  <div class="main">
+    <header class="header">
+      <button class="header-menu" id="menuBtn">☰</button>
+      <div class="header-title">📥 Import Data</div>
+      <div class="header-right"><span class="header-date" id="headerDate"></span></div>
+    </header>
+
+    <div class="page">
+
+      <!-- STEP 1: Pilih Tujuan & Upload -->
+      <div class="import-card" id="step1">
+        <div style="font-size:15px;font-weight:700;margin-bottom:16px">📂 Langkah 1 — Pilih Tujuan & Upload File</div>
+
+        <!-- Template download -->
+        <div style="background:var(--primary-light);border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:600;color:var(--primary)">💡 Download template Excel terlebih dahulu:</span>
+          <button class="template-btn" onclick="downloadTemplate('donatur_rutin')">⬇️ Template Donatur Rutin</button>
+          <button class="template-btn" onclick="downloadTemplate('kotak_infaq')">⬇️ Template Kotak Infaq</button>
+          <button class="template-btn" onclick="downloadTemplate('calon_donatur')">⬇️ Template Calon Donatur</button>
+        </div>
+
+        <div class="fgrid" style="margin-bottom:16px">
+          <div class="fg">
+            <label class="flabel">Masukkan data ke *</label>
+            <select id="importTarget" class="fctrl" onchange="onTargetChange()">
+              <option value="">-- Pilih Tujuan --</option>
+              <option value="donatur_rutin">Donatur Rutin (Aktif)</option>
+              <option value="prospek_rutin">Calon Donatur Rutin</option>
+              <option value="kotak_infaq">Kotak Infaq</option>
+              <option value="prospek_kotak">Prospek Kotak Infaq</option>
+              <option value="donatur_waqaf">Donatur Waqaf</option>
+              <option value="prospek_waqaf">Prospek Waqaf</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label class="flabel">Jika data sudah ada (duplikat)</label>
+            <select id="dupMode" class="fctrl">
+              <option value="skip">Lewati (skip)</option>
+              <option value="update">Perbarui data lama</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Drop zone -->
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+          <div class="dz-icon">📄</div>
+          <div class="dz-title">Klik atau drag & drop file di sini</div>
+          <div class="dz-sub">Mendukung Excel (.xlsx, .xls) dan CSV (.csv)</div>
+          <div class="dz-formats">
+            <span class="format-badge">📊 .xlsx</span>
+            <span class="format-badge">📊 .xls</span>
+            <span class="format-badge">📋 .csv</span>
+          </div>
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFile(this.files[0])">
+        </div>
+
+        <div id="fileInfo" style="display:none;margin-top:12px;padding:10px 14px;background:var(--success-light);border-radius:8px;font-size:13px;color:var(--success);font-weight:600"></div>
+      </div>
+
+      <!-- STEP 2: Mapping Kolom -->
+      <div class="import-card" id="step2" style="display:none">
+        <div style="font-size:15px;font-weight:700;margin-bottom:4px">🔗 Langkah 2 — Sesuaikan Kolom</div>
+        <div style="font-size:12px;color:var(--gray-400);margin-bottom:16px">Cocokkan kolom dari file dengan field di sistem</div>
+        <div id="mappingContainer"></div>
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="resetImport()">← Kembali</button>
+          <button class="btn btn-primary" onclick="previewData()">Preview Data →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Preview -->
+      <div class="import-card" id="step3" style="display:none">
+        <div style="font-size:15px;font-weight:700;margin-bottom:4px">👁 Langkah 3 — Preview Data</div>
+        <div id="previewInfo" style="font-size:13px;color:var(--gray-500);margin-bottom:12px"></div>
+        <div class="tbl-wrap" style="max-height:360px;overflow-y:auto">
+          <table class="preview-table">
+            <thead id="previewHead"></thead>
+            <tbody id="previewBody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="showStep(2)">← Kembali</button>
+          <button class="btn btn-success" onclick="doImport()" style="padding:9px 28px">✓ Import Sekarang</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: Hasil -->
+      <div class="import-card" id="step4" style="display:none">
+        <div style="font-size:15px;font-weight:700;margin-bottom:16px">✅ Langkah 4 — Hasil Import</div>
+        <div id="importResult"></div>
+        <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline" onclick="resetImport()">Import Lagi</button>
+          <a href="donatur-rutin.html" class="btn btn-primary">Lihat Data Donatur →</a>
+          <a href="kotak-infaq.html" class="btn btn-outline">Lihat Kotak Infaq →</a>`n      <a href="kcs.html" class="nav-item"><span class="icon">📦</span> KCS</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<div id="toast-wrap"></div>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="js/app.js"></script>
+<script src="js/import.js"></script>
+</body>
+</html>
