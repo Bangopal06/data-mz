@@ -238,47 +238,48 @@ window.previewData = function() {
 };
 
 // ---- IMPORT ----
-window.doImport = function() {
+window.doImport = async function() {
   const target = document.getElementById('importTarget').value;
   const dupMode = document.getElementById('dupMode').value;
-  const existing = DB.get(target);
   const dupKey = getDupKey(target);
+
+  // Ambil data existing dari Supabase
+  const existing = await DB.sync(target);
 
   let sukses = 0, skip = 0, update = 0, error = 0;
   const results = [];
-  const newData = [...existing];
 
-  mappedData.forEach(row => {
+  for (const row of mappedData) {
     try {
       const record = buildRecord(target, row);
-      if (!record) { error++; results.push({ ok: false, msg: `Baris dilewati: data tidak lengkap` }); return; }
+      if (!record) { error++; results.push({ ok: false, msg: `Baris dilewati: data tidak lengkap` }); continue; }
 
       // Cek duplikat
-      const existIdx = dupKey ? newData.findIndex(e => e[dupKey] === record[dupKey]) : -1;
+      const existItem = dupKey ? existing.find(e => e[dupKey] === record[dupKey]) : null;
 
-      if (existIdx >= 0) {
+      if (existItem) {
         if (dupMode === 'update') {
-          newData[existIdx] = { ...newData[existIdx], ...record, id: newData[existIdx].id };
-          update++;
-          results.push({ ok: true, msg: `Diperbarui: ${record[getNameKey(target)]}` });
+          const r = await DB.update(target, existItem.id, record);
+          if (r) { update++; results.push({ ok: true, msg: `Diperbarui: ${record[getNameKey(target)]}` }); }
+          else { error++; results.push({ ok: false, msg: `Gagal update: ${record[getNameKey(target)]}` }); }
         } else {
           skip++;
           results.push({ ok: false, msg: `Dilewati (sudah ada): ${record[getNameKey(target)]}` });
         }
       } else {
-        newData.push(record);
-        sukses++;
-        results.push({ ok: true, msg: `Ditambahkan: ${record[getNameKey(target)]}` });
+        const r = await DB.insert(target, record);
+        if (r) { sukses++; results.push({ ok: true, msg: `Ditambahkan: ${record[getNameKey(target)]}` }); }
+        else { error++; results.push({ ok: false, msg: `Gagal insert: ${record[getNameKey(target)]}` }); }
       }
     } catch(e) {
       error++;
       results.push({ ok: false, msg: `Error: ${e.message}` });
     }
-  });
+  }
 
-  DB.set(target, newData);
+  // Sync ulang ke cache
+  await DB.sync(target);
 
-  // Tampilkan hasil
   const summary = `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:20px">
       <div class="stat"><div class="stat-ico ic-green">✅</div><div class="stat-body"><div class="lbl">Ditambahkan</div><div class="val">${sukses}</div></div></div>
@@ -287,9 +288,7 @@ window.doImport = function() {
       <div class="stat"><div class="stat-ico ic-red">❌</div><div class="stat-body"><div class="lbl">Error</div><div class="val">${error}</div></div></div>
     </div>
     <div style="max-height:300px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:8px;padding:12px">
-      ${results.map(r => `<div class="result-item ${r.ok?'ri-ok':'ri-err'}">
-        <span>${r.ok?'✓':'✕'}</span><span>${r.msg}</span>
-      </div>`).join('')}
+      ${results.map(r=>`<div class="result-item ${r.ok?'ri-ok':'ri-err'}"><span>${r.ok?'✓':'✕'}</span><span>${r.msg}</span></div>`).join('')}
     </div>`;
 
   document.getElementById('importResult').innerHTML = summary;
@@ -298,7 +297,7 @@ window.doImport = function() {
 };
 
 function buildRecord(target, row) {
-  const base = { id: uid(), created_at: new Date().toISOString() };
+  const base = { created_at: new Date().toISOString() };
 
   if (target === 'donatur_rutin') {
     if (!row.nama) return null;
