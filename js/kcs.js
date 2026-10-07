@@ -1,4 +1,4 @@
-// =============================================
+﻿// =============================================
 // KCS - Kotak Collection System
 // =============================================
 
@@ -228,7 +228,7 @@ window.saveKcsAmbil = async function() {
   DB.set('kcs_data',allKcs);
   // Simpan riwayat
   const ambil = DB.get('kcs_pengambilan');
-  ambil.unshift({ id:uid(), kcs_id:kcsId, nama_kotak:kcs?.nama_kotak, nama_toko:kcs?.nama_toko,
+  ambil.unshift({ kcs_id:kcsId, nama_kotak:kcs?.nama_kotak, nama_toko:kcs?.nama_toko,
     tgl_ambil:tglAmbil, nominal, petugas:document.getElementById('kaPetugas').value.trim(),
     catatan:document.getElementById('kaCatatan').value.trim() });
   DB.set('kcs_pengambilan',ambil);
@@ -413,7 +413,7 @@ window.jadikanKcsAktif = async function(id) {
   if (!ok) return;
   DB.set('kcs_prospek',DB.get('kcs_prospek').filter(x=>x.id!==id));
   const data = DB.get('kcs_data');
-  data.unshift({ id:uid(), nama_kotak:`KCS ${p.nama_toko}`, nama_toko:p.nama_toko,
+  data.unshift({ nama_kotak:`KCS ${p.nama_toko}`, nama_toko:p.nama_toko,
     pemilik:p.pemilik||'', hp:p.hp||'', alamat:p.alamat||'', kecamatan:p.kecamatan||'',
     kota:p.kota||'', frekuensi:'bulanan', petugas:p.petugas||'',
     nominal_terakhir:0, tgl_ambil:null, status:'aktif', catatan:p.catatan||'', created_at:new Date().toISOString() });
@@ -493,10 +493,10 @@ window.handleKCSFile = function(file) {
     let ok=0,skip=0,upd=0;
     rows.forEach(row=>{
       const isData = type==='kcs_data';
-      const record = isData ? { id:uid(), nama_kotak:row.nama_kotak||`KCS ${row.nama_toko}`, nama_toko:row.nama_toko||'',
+      const record = isData ? { nama_kotak:row.nama_kotak||`KCS ${row.nama_toko}`, nama_toko:row.nama_toko||'',
         pemilik:row.pemilik||'', hp:row.hp||'', alamat:row.alamat||'', kecamatan:row.kecamatan||'', kota:row.kota||'',
         frekuensi:row.frekuensi||'bulanan', petugas:row.petugas||'', nominal_terakhir:0, tgl_ambil:null, status:'aktif', catatan:row.catatan||'', created_at:new Date().toISOString()
-      } : { id:uid(), nama_toko:row.nama_toko||row.nama_kotak||'', pemilik:row.pemilik||'', hp:row.hp||'',
+      } : { nama_toko:row.nama_toko||row.nama_kotak||'', pemilik:row.pemilik||'', hp:row.hp||'',
         alamat:row.alamat||'', kecamatan:row.kecamatan||'', kota:row.kota||'', status:'baru', petugas:row.petugas||'', catatan:row.catatan||'', created_at:new Date().toISOString() };
       const key = isData ? record.nama_kotak : record.nama_toko;
       const dupKey = isData ? 'nama_kotak' : 'nama_toko';

@@ -1,4 +1,4 @@
-let pgProg=1, pgDonWQ=1, pgProsWQ=1;
+﻿let pgProg=1, pgDonWQ=1, pgProsWQ=1;
 const PS=12;
 
 document.addEventListener('DOMContentLoaded', () => {

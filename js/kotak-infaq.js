@@ -1,4 +1,4 @@
-let pgKotak=1, pgProsKotak=1, pgAmbil=1;
+﻿let pgKotak=1, pgProsKotak=1, pgAmbil=1;
 const PS=12;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -150,7 +150,7 @@ window.saveKotak = async function(id) {
   if (!ok) return;
   const data = DB.get('kotak_infaq');
   const payload = {
-    id: id||uid(), nama_kotak: namaKotak, nama_toko: namaToko,
+    nama_kotak: namaKotak, nama_toko: namaToko,
     pemilik: document.getElementById('kPemilik').value.trim(),
     hp: document.getElementById('kHP').value.trim(),
     alamat: document.getElementById('kAlamat').value.trim(),
@@ -383,19 +383,20 @@ window.openModalProsKotak = function(id=null) {
   document.body.insertAdjacentHTML('beforeend', html);
 };
 
-window.saveProsKotak = function(id) {
+window.saveProsKotak = async function(id) {
   const nama = document.getElementById('pkNamaToko').value.trim();
   if (!nama) { toast('Nama toko wajib diisi','warn'); return; }
-  const data = DB.get('prospek_kotak');
-  const payload = { id:id||uid(), nama_toko:nama, pemilik:document.getElementById('pkPemilik').value.trim(), hp:document.getElementById('pkHP').value.trim(), kota:document.getElementById('pkKota').value.trim(), kecamatan:document.getElementById('pkKecamatan').value.trim(), alamat:document.getElementById('pkAlamat').value.trim(), status:document.getElementById('pkStatus').value, petugas:document.getElementById('pkPetugas').value.trim(), catatan:document.getElementById('pkCatatan').value.trim(), created_at:id?(data.find(x=>x.id===id)?.created_at||new Date().toISOString()):new Date().toISOString() };
-  if (id) { const i=data.findIndex(x=>x.id===id); data[i]=payload; } else data.unshift(payload);
-  DB.set('prospek_kotak', data);
+  const payload = { nama_toko:nama, pemilik:document.getElementById('pkPemilik').value.trim(), hp:document.getElementById('pkHP').value.trim(), kota:document.getElementById('pkKota').value.trim(), kecamatan:document.getElementById('pkKecamatan').value.trim(), alamat:document.getElementById('pkAlamat').value.trim(), status:document.getElementById('pkStatus').value, petugas:document.getElementById('pkPetugas').value.trim(), catatan:document.getElementById('pkCatatan').value.trim() };
+  const r = id ? await DB.update('prospek_kotak',id,payload) : await DB.insert('prospek_kotak',payload);
+  if(!r){toast('Gagal menyimpan','err');return;}
+  await DB.sync('prospek_kotak');
   toast('Data prospek tersimpan','ok'); closeModal('ovProsKotak'); loadKiStats(); loadProsKotak();
 };
 
 window.hapusProsKotak = async function(id) {
   if (!await confirmDel()) return;
-  DB.set('prospek_kotak', DB.get('prospek_kotak').filter(x=>x.id!==id));
+  await DB.delete('prospek_kotak',id);
+  await DB.sync('prospek_kotak');
   toast('Dihapus','ok'); loadKiStats(); loadProsKotak();
 };
 
@@ -404,10 +405,10 @@ window.jadikanKotakAktif = async function(id) {
   if (!p) return;
   const ok = await confirmAction('📦','Pasang Kotak Infaq?',`<strong>${p.nama_toko}</strong> akan ditambahkan sebagai lokasi kotak infaq aktif.`,'Ya, Pasang','btn-success');
   if (!ok) return;
-  DB.set('prospek_kotak', DB.get('prospek_kotak').filter(x=>x.id!==id));
-  const kotak = DB.get('kotak_infaq');
-  kotak.unshift({ id:uid(), nama_kotak:`Kotak ${p.nama_toko}`, nama_toko:p.nama_toko, pemilik:p.pemilik||'', hp:p.hp||'', alamat:p.alamat||'', kecamatan:p.kecamatan||'', kota:p.kota||'', frekuensi:'bulanan', petugas:p.petugas||'', nominal_terakhir:0, tgl_ambil:null, status:'aktif', catatan:p.catatan||'', created_at:new Date().toISOString() });
-  DB.set('kotak_infaq', kotak);
+  const r = await DB.insert('kotak_infaq',{ nama_kotak:`Kotak Infaq ${p.nama_toko}`, nama_toko:p.nama_toko, pemilik:p.pemilik||'', hp:p.hp||'', alamat:p.alamat||'', kecamatan:p.kecamatan||'', kota:p.kota||'', frekuensi:'bulanan', petugas:p.petugas||'', nominal_terakhir:0, tgl_ambil:null, status:'aktif', catatan:p.catatan||'' });
+  if(!r){toast('Gagal','err');return;}
+  await DB.delete('prospek_kotak',id);
+  await Promise.all([DB.sync('kotak_infaq'),DB.sync('prospek_kotak')]);
   toast(`${p.nama_toko} berhasil dipasang kotak infaq!`,'ok');
   loadKiStats(); loadKotak(); loadProsKotak();
 };
@@ -526,13 +527,12 @@ window.processKotakFile = function(file) {
     const newData = [...existing];
     let sukses = 0, skip = 0, update = 0;
 
-    rows.forEach(row => {
+    for (const row of rows) {
       let record;
       if (type === 'kotak_infaq') {
         if (!row.nama_kotak && !row.nama_toko) return;
         record = {
-          id: uid(),
-          nama_kotak: row.nama_kotak || `Kotak ${row.nama_toko}`,
+                    nama_kotak: row.nama_kotak || `Kotak ${row.nama_toko}`,
           nama_toko: row.nama_toko || row.nama_kotak,
           pemilik: row.pemilik || '',
           hp: row.hp || '',
@@ -557,8 +557,7 @@ window.processKotakFile = function(file) {
       } else {
         if (!row.nama_toko) return;
         record = {
-          id: uid(),
-          nama_toko: row.nama_toko,
+                    nama_toko: row.nama_toko,
           pemilik: row.pemilik || '',
           hp: row.hp || '',
           alamat: row.alamat || '',
@@ -575,9 +574,9 @@ window.processKotakFile = function(file) {
           else skip++;
         } else { newData.push(record); sukses++; }
       }
-    });
+    }
 
-    DB.set(type, newData);
+    await DB.sync(type);
 
     if (prog) prog.innerHTML = `
       <div style="background:var(--success-light);border-radius:8px;padding:14px 16px">
