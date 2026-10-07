@@ -1,17 +1,31 @@
 document.addEventListener('DOMContentLoaded', () => {
-  renderDashboard();
+  try {
+    renderDashboard();
+  } catch(e) {
+    console.error('Dashboard error:', e);
+    document.getElementById('dashContent').innerHTML = `
+      <div style="text-align:center;padding:48px;color:var(--gray-400)">
+        <div style="font-size:32px;margin-bottom:12px">📋</div>
+        <div style="font-size:15px;font-weight:600;color:var(--gray-600);margin-bottom:8px">Belum ada data</div>
+        <div style="font-size:13px">Mulai dengan menambah data di menu Donatur Rutin, Kotak Infaq, atau KCS</div>
+      </div>`;
+  }
 });
 
+function safeGet(key) {
+  try { return DB.get(key) || []; } catch(e) { return []; }
+}
+
 function renderDashboard() {
-  const dr = DB.get('donatur_rutin');
-  const pr = DB.get('prospek_rutin');
-  const ki = DB.get('kotak_infaq');
-  const kcs = DB.get('kcs_data');
-  const dw = DB.get('donatur_waqaf');
-  const wp = DB.get('waqaf_program');
-  const bayar = DB.get('pembayaran_rutin');
-  const ambilKI = DB.get('pengambilan_kotak');
-  const ambilKCS = DB.get('kcs_pengambilan');
+  const dr = safeGet('donatur_rutin');
+  const pr = safeGet('prospek_rutin');
+  const ki = safeGet('kotak_infaq');
+  const kcs = safeGet('kcs_data');
+  const dw = safeGet('donatur_waqaf');
+  const wp = safeGet('waqaf_program');
+  const bayar = safeGet('pembayaran_rutin');
+  const ambilKI = safeGet('pengambilan_kotak');
+  const ambilKCS = safeGet('kcs_pengambilan');
 
   // Hitung semua pendapatan
   const totalDonasi = dr.filter(d=>d.status==='aktif').reduce((s,d)=>s+(+d.nominal||0),0);
