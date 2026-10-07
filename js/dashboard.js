@@ -1,7 +1,12 @@
-document.addEventListener('DOMContentLoaded', () => {
-  try {
-    renderDashboard();
-  } catch(e) {
+document.addEventListener('DOMContentLoaded', async () => {
+  await Promise.all([
+    DB.sync('donatur_rutin'), DB.sync('prospek_rutin'),
+    DB.sync('kotak_infaq'), DB.sync('kcs_data'),
+    DB.sync('donatur_waqaf'), DB.sync('waqaf_program'),
+    DB.sync('pembayaran_rutin'), DB.sync('pengambilan_kotak'),
+    DB.sync('kcs_pengambilan')
+  ]);
+  try { renderDashboard(); } catch(e) {
     console.error('Dashboard error:', e);
     document.getElementById('dashContent').innerHTML = `
       <div style="text-align:center;padding:48px;color:var(--gray-400)">

@@ -1,7 +1,12 @@
 let pgKotak=1, pgProsKotak=1, pgAmbil=1;
 const PS=12;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await Promise.all([
+    DB.sync('kotak_infaq'),
+    DB.sync('prospek_kotak'),
+    DB.sync('pengambilan_kotak')
+  ]);
   initTabs('kiTabs', (target) => {
     if (target === 'paneKotak') loadKotak();
     else if (target === 'paneProspekKotak') loadProsKotak();
@@ -157,17 +162,18 @@ window.saveKotak = async function(id) {
     tgl_ambil: document.getElementById('kTglAmbil').value||null,
     status: document.getElementById('kStatus').value,
     catatan: document.getElementById('kCatatan').value.trim(),
-    created_at: id?(data.find(x=>x.id===id)?.created_at||new Date().toISOString()):new Date().toISOString()
   };
-  if (id) { const i=data.findIndex(x=>x.id===id); data[i]=payload; } else data.unshift(payload);
-  DB.set('kotak_infaq', data);
+  const r = id ? await DB.update('kotak_infaq',id,payload) : await DB.insert('kotak_infaq',payload);
+  if(!r){toast('Gagal menyimpan','err');return;}
+  await DB.sync('kotak_infaq');
   toast(id?'Data diperbarui':'Kotak berhasil ditambahkan','ok');
   closeModal('ovKotak'); loadKiStats(); loadKotak();
 };
 
 window.hapusKotak = async function(id) {
   if (!await confirmDel('Hapus data kotak infaq ini?')) return;
-  DB.set('kotak_infaq', DB.get('kotak_infaq').filter(x=>x.id!==id));
+  await DB.delete('kotak_infaq',id);
+  await DB.sync('kotak_infaq');
   toast('Dihapus','ok'); loadKiStats(); loadKotak();
 };
 
@@ -204,15 +210,10 @@ window.saveAmbil = async function() {
   const kotak = DB.get('kotak_infaq').find(k=>k.id===kotakId);
   const ok = await confirmSave(`Catat pengambilan <strong>${rupiah(nominal)}</strong> dari <strong>${kotak?.nama_kotak}</strong>?`);
   if (!ok) return;
-  // Update nominal terakhir di kotak
-  const allKotak = DB.get('kotak_infaq');
-  const ki = allKotak.find(k=>k.id===kotakId);
-  if (ki) { ki.nominal_terakhir=nominal; ki.tgl_ambil=tglAmbil; }
-  DB.set('kotak_infaq', allKotak);
-  // Simpan riwayat
-  const ambil = DB.get('pengambilan_kotak');
-  ambil.unshift({ id:uid(), kotak_id:kotakId, nama_kotak:kotak?.nama_kotak, nama_toko:kotak?.nama_toko, tgl_ambil:tglAmbil, nominal, petugas:document.getElementById('aPetugas').value.trim(), catatan:document.getElementById('aCatatan').value.trim() });
-  DB.set('pengambilan_kotak', ambil);
+  await DB.update('kotak_infaq', kotakId, { nominal_terakhir: nominal, tgl_ambil: tglAmbil });
+  const r = await DB.insert('pengambilan_kotak', { kotak_id:kotakId, nama_kotak:kotak?.nama_kotak, nama_toko:kotak?.nama_toko, tgl_ambil:tglAmbil, nominal, petugas:document.getElementById('aPetugas').value.trim(), catatan:document.getElementById('aCatatan').value.trim() });
+  if(!r){toast('Gagal','err');return;}
+  await Promise.all([DB.sync('kotak_infaq'),DB.sync('pengambilan_kotak')]);
   toast('Pengambilan berhasil dicatat','ok');
   closeModal('ovAmbil'); loadKiStats(); loadKotak(); loadAmbilByBulan();
 };

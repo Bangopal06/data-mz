@@ -6,7 +6,12 @@ let pgKcsData = 1, pgKcsProspek = 1;
 const PS = 12;
 const BULAN_NAMA = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await Promise.all([
+    DB.sync('kcs_data'),
+    DB.sync('kcs_prospek'),
+    DB.sync('kcs_pengambilan')
+  ]);
   initTabs('kcsTabs', (target) => {
     if (target === 'paneKcsData') loadKcsData();
     else if (target === 'paneKcsProspek') loadKcsProspek();
