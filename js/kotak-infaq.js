@@ -486,126 +486,48 @@ window.handleKotakDrop = function(e) {
 
 window.processKotakFile = function(file) {
   const prog = document.getElementById('importKotakProgress');
-  if (prog) { prog.style.display = 'block'; prog.innerHTML = `<div style="font-size:13px;color:var(--primary)">⏳ Membaca <strong>${file.name}</strong>...</div>`; }
-
+  if (prog) { prog.style.display='block'; prog.innerHTML=`<div style="color:var(--primary);font-size:13px">⏳ Membaca <strong>${file.name}</strong>...</div>`; }
   const ext = file.name.split('.').pop().toLowerCase();
   const reader = new FileReader();
-
-  const parse = (csvText) => {
-    const lines = csvText.split(/\r?\n/).filter(l => l.trim());
-    if (lines.length < 2) { showKotakError('File kosong'); return; }
-
-    const rawHeaders = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim());
-    // Normalize header
-    const headers = rawHeaders.map(h => h.toLowerCase()
-      .replace(/\s+/g,'_').replace(/nama_kotak.*/,'nama_kotak')
-      .replace(/nama_toko.*/,'nama_toko').replace(/nama_tempat.*/,'nama_toko')
-      .replace(/pemilik.*/,'pemilik').replace(/no_?hp.*/,'hp').replace(/nomor_?hp.*/,'hp')
-      .replace(/alamat.*/,'alamat').replace(/kecamatan.*/,'kecamatan')
-      .replace(/kota.*/,'kota').replace(/frekuensi.*/,'frekuensi')
-      .replace(/petugas.*/,'petugas').replace(/catatan.*/,'catatan'));
-
-    const rows = lines.slice(1).map(line => {
-      const vals = [];
-      let inQ = false, cur = '';
-      for (const ch of line) {
-        if (ch === '"') inQ = !inQ;
-        else if (ch === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
-        else cur += ch;
+  const parse = async (csvText) => {
+    try {
+      const lines = csvText.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) { showKotakError('File kosong'); return; }
+      const headers = lines[0].split(/[,\t]/).map(h => h.replace(/^"|"$/g,'').trim().toLowerCase().replace(/\s+/g,'_').replace(/no_?hp|nomor_?hp/,'hp').replace(/nama_kotak.*/,'nama_kotak').replace(/nama_toko|nama_tempat/,'nama_toko'));
+      const rows = lines.slice(1).map(line => {
+        const vals=[]; let inQ=false,cur='';
+        for(const ch of line){if(ch==='"')inQ=!inQ;else if((ch===','||ch==='\t')&&!inQ){vals.push(cur.trim());cur='';}else cur+=ch;}
+        vals.push(cur.trim());
+        const obj={}; headers.forEach((h,i)=>obj[h]=(vals[i]||'').replace(/^"|"$/g,'').trim()); return obj;
+      }).filter(r=>r.nama_kotak||r.nama_toko);
+      if (!rows.length) { showKotakError('Tidak ada data valid'); return; }
+      const type = document.getElementById('importKotakType').value;
+      const dupMode = document.getElementById('importKotakDup').value;
+      const existing = await DB.sync(type);
+      let sukses=0,skip=0,update=0,gagal=0;
+      for (const row of rows) {
+        if (type==='kotak_infaq') {
+          const namaKotak = row.nama_kotak||`Kotak Infaq ${row.nama_toko}`;
+          const payload = {nama_kotak:namaKotak,nama_toko:row.nama_toko||row.nama_kotak,pemilik:row.pemilik||'',hp:row.hp||'',alamat:row.alamat||'',kecamatan:row.kecamatan||'',kota:row.kota||'',frekuensi:row.frekuensi||'bulanan',petugas:row.petugas||'',nominal_terakhir:0,tgl_ambil:null,status:'aktif',catatan:row.catatan||''};
+          const ex=existing.find(e=>e.nama_kotak===namaKotak);
+          if(ex){if(dupMode==='update'){const r=await DB.update(type,ex.id,payload);r?update++:gagal++;}else skip++;}
+          else{const r=await DB.insert(type,payload);r?sukses++:gagal++;}
+        } else {
+          if(!row.nama_toko) continue;
+          const payload={nama_toko:row.nama_toko,pemilik:row.pemilik||'',hp:row.hp||'',alamat:row.alamat||'',kecamatan:row.kecamatan||'',kota:row.kota||'',status:'baru',petugas:row.petugas||'',catatan:row.catatan||''};
+          const ex=existing.find(e=>e.nama_toko===row.nama_toko);
+          if(ex){if(dupMode==='update'){const r=await DB.update(type,ex.id,payload);r?update++:gagal++;}else skip++;}
+          else{const r=await DB.insert(type,payload);r?sukses++:gagal++;}
+        }
       }
-      vals.push(cur.trim());
-      const obj = {};
-      headers.forEach((h, i) => obj[h] = (vals[i]||'').replace(/^"|"$/g,'').trim());
-      return obj;
-    }).filter(r => r.nama_kotak || r.nama_toko);
-
-    if (!rows.length) { showKotakError('Tidak ada data valid'); return; }
-
-    const type = document.getElementById('importKotakType').value;
-    const dupMode = document.getElementById('importKotakDup').value;
-    const existing = DB.get(type);
-    const newData = [...existing];
-    let sukses = 0, skip = 0, update = 0;
-
-    for (const row of rows) {
-      let record;
-      if (type === 'kotak_infaq') {
-        if (!row.nama_kotak && !row.nama_toko) return;
-        record = {
-                    nama_kotak: row.nama_kotak || `Kotak ${row.nama_toko}`,
-          nama_toko: row.nama_toko || row.nama_kotak,
-          pemilik: row.pemilik || '',
-          hp: row.hp || '',
-          alamat: row.alamat || '',
-          kecamatan: row.kecamatan || '',
-          kota: row.kota || '',
-          frekuensi: row.frekuensi || 'bulanan',
-          petugas: row.petugas || '',
-          nominal_terakhir: 0,
-          tgl_ambil: null,
-          status: 'aktif',
-          catatan: row.catatan || '',
-          created_at: new Date().toISOString()
-        };
-        const dupKey = row.nama_kotak || `Kotak ${row.nama_toko}`;
-        const dupIdx = newData.findIndex(e => e.nama_kotak === dupKey);
-        if (dupIdx >= 0) {
-          if (dupMode === 'update') { newData[dupIdx] = { ...newData[dupIdx], ...record, id: newData[dupIdx].id }; update++; }
-          else skip++;
-        } else { newData.push(record); sukses++; }
-
-      } else {
-        if (!row.nama_toko) return;
-        record = {
-                    nama_toko: row.nama_toko,
-          pemilik: row.pemilik || '',
-          hp: row.hp || '',
-          alamat: row.alamat || '',
-          kecamatan: row.kecamatan || '',
-          kota: row.kota || '',
-          status: 'baru',
-          petugas: row.petugas || '',
-          catatan: row.catatan || '',
-          created_at: new Date().toISOString()
-        };
-        const dupIdx = newData.findIndex(e => e.nama_toko === row.nama_toko);
-        if (dupIdx >= 0) {
-          if (dupMode === 'update') { newData[dupIdx] = { ...newData[dupIdx], ...record, id: newData[dupIdx].id }; update++; }
-          else skip++;
-        } else { newData.push(record); sukses++; }
-      }
-    }
-
-    await DB.sync(type);
-
-    if (prog) prog.innerHTML = `
-      <div style="background:var(--success-light);border-radius:8px;padding:14px 16px">
-        <div style="font-weight:700;color:var(--success);margin-bottom:8px">✅ Import Berhasil!</div>
-        <div style="font-size:13px;display:flex;gap:16px;flex-wrap:wrap">
-          <span>✓ <strong>${sukses}</strong> ditambahkan</span>
-          <span>🔄 <strong>${update}</strong> diperbarui</span>
-          <span>⏭️ <strong>${skip}</strong> dilewati</span>
-          <span>📊 Total: <strong>${rows.length}</strong> baris</span>
-        </div>
-      </div>`;
-
-    loadKiStats(); loadKotak(); loadProsKotak();
-    toast(`Import selesai! ${sukses} data masuk`, 'ok');
+      await DB.sync(type);
+      if(prog) prog.innerHTML=`<div style="background:var(--success-light);border-radius:8px;padding:14px"><div style="font-weight:700;color:var(--success);margin-bottom:6px">✅ Import Berhasil!</div><div style="font-size:13px;display:flex;gap:12px;flex-wrap:wrap"><span>✓ <strong>${sukses}</strong> ditambahkan</span><span>🔄 <strong>${update}</strong> diperbarui</span><span>⏭️ <strong>${skip}</strong> dilewati</span>${gagal?`<span style="color:var(--danger)">❌ <strong>${gagal}</strong> gagal</span>`:''}</div></div>`;
+      loadKiStats();loadKotak();loadProsKotak();
+      toast(`Import selesai! ${sukses} data masuk`,'ok');
+    } catch(err) { showKotakError('Error: '+err.message); console.error(err); }
   };
-
-  if (ext === 'csv') {
-    reader.onload = e => parse(e.target.result);
-    reader.readAsText(file, 'UTF-8');
-  } else {
-    reader.onload = e => {
-      try {
-        const wb = XLSX.read(e.target.result, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        parse(XLSX.utils.sheet_to_csv(ws));
-      } catch(err) { showKotakError('Gagal baca file: ' + err.message); }
-    };
-    reader.readAsArrayBuffer(file);
-  }
+  if(ext==='csv'){reader.onload=e=>parse(e.target.result);reader.readAsText(file,'UTF-8');}
+  else{reader.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'});parse(XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]]));}catch(err){showKotakError('Gagal baca Excel: '+err.message);}};reader.readAsArrayBuffer(file);}
 };
 
 function showKotakError(msg) {
