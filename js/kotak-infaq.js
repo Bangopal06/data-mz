@@ -2,20 +2,20 @@
 const PS=12;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await Promise.all([
-    DB.sync('kotak_infaq'),
-    DB.sync('prospek_kotak'),
-    DB.sync('pengambilan_kotak')
-  ]);
+  // Render dari cache dulu
+  loadKiStats(); loadKotak(); loadProsKotak(); loadAmbil();
   initTabs('kiTabs', (target) => {
     if (target === 'paneKotak') loadKotak();
     else if (target === 'paneProspekKotak') loadProsKotak();
     else if (target === 'panePengambilan') { initAmbilFilter(); loadAmbilByBulan(); }
   });
-  loadKiStats();
-  loadKotak();
-  loadProsKotak();
-  loadAmbil();
+  // Sync background
+  await Promise.all([
+    DB.sync('kotak_infaq'),
+    DB.sync('prospek_kotak'),
+    DB.sync('pengambilan_kotak')
+  ]);
+  loadKiStats(); loadKotak(); loadProsKotak(); loadAmbil();
 
   document.getElementById('btnTambahKI').addEventListener('click', () => {
     const tab = document.querySelector('#kiTabs .tab.active').dataset.target;
@@ -24,11 +24,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     else openModalAmbil();
   });
 
-  ['srKotak','srKotaKota','flKotakStatus','flFrekuensi'].forEach(id => document.getElementById(id)?.addEventListener('input', () => { pgKotak=1; loadKotak(); }));
-  ['srKotak','srKotaKota','flKotakStatus','flFrekuensi'].forEach(id => document.getElementById(id)?.addEventListener('change', () => { pgKotak=1; loadKotak(); }));
-  ['srProsKotak','flProsKotakStatus'].forEach(id => document.getElementById(id)?.addEventListener('input', () => { pgProsKotak=1; loadProsKotak(); }));
-  ['srProsKotak','flProsKotakStatus'].forEach(id => document.getElementById(id)?.addEventListener('change', () => { pgProsKotak=1; loadProsKotak(); }));
-  document.getElementById('srAmbil').addEventListener('input', () => { pgAmbil=1; loadAmbil(); });
+  ['srKotak','srKotaKota'].forEach(id => document.getElementById(id)?.addEventListener('input', debounce(() => { pgKotak=1; loadKotak(); })));
+  ['flKotakStatus','flFrekuensi'].forEach(id => document.getElementById(id)?.addEventListener('change', () => { pgKotak=1; loadKotak(); }));
+  ['srProsKotak'].forEach(id => document.getElementById(id)?.addEventListener('input', debounce(() => { pgProsKotak=1; loadProsKotak(); })));
+  ['flProsKotakStatus'].forEach(id => document.getElementById(id)?.addEventListener('change', () => { pgProsKotak=1; loadProsKotak(); }));
+  document.getElementById('srAmbil').addEventListener('input', debounce(() => { pgAmbil=1; loadAmbil(); }));
   document.getElementById('flAmbilBulan').addEventListener('change', () => { pgAmbil=1; loadAmbil(); });
 });
 

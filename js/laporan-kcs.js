@@ -1,6 +1,9 @@
 ﻿const BULAN_NAMA = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  initFilter();
+  renderLapKCS();
+  await Promise.all([DB.sync('kcs_data'), DB.sync('kcs_pengambilan')]);
   initFilter();
   renderLapKCS();
 });

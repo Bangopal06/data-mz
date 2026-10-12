@@ -1,6 +1,9 @@
 ﻿const BULAN_NAMA = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  initFilter();
+  renderDonatur();
+  await Promise.all([DB.sync('donatur_rutin'), DB.sync('pembayaran_rutin')]);
   initFilter();
   renderDonatur();
 });

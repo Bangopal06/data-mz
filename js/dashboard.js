@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  // Render dulu dari cache (langsung terasa cepat)
+  try { renderDashboard(); } catch(e) {}
+
+  // Background sync semua tabel sekaligus
   await Promise.all([
     DB.sync('donatur_rutin'), DB.sync('prospek_rutin'),
     DB.sync('kotak_infaq'), DB.sync('kcs_data'),
@@ -6,6 +10,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     DB.sync('pembayaran_rutin'), DB.sync('pengambilan_kotak'),
     DB.sync('kcs_pengambilan')
   ]);
+
+  // Re-render dengan data terbaru
   try { renderDashboard(); } catch(e) {
     console.error('Dashboard error:', e);
     document.getElementById('dashContent').innerHTML = `

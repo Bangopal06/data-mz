@@ -226,16 +226,26 @@ function exportExcel(data, name, sheetName='Data') {
 
 // ---- BUILD TEMPLATE EXCEL ----
 function buildTemplateExcel(title, labels, headers, contoh, type) {
-  const SEP='\t';
-  const rows=[[title,...Array(labels.length-1).fill('')],
-    ['PETUNJUK: Hapus baris contoh sebelum import. Kolom wajib: nama/nama_toko',...Array(labels.length-1).fill('')],
-    Array(labels.length).fill(''), labels, ...contoh];
-  const tsv=rows.map(r=>r.map(c=>String(c??'')).join(SEP)).join('\r\n');
-  const blob=new Blob(['\uFEFF'+tsv],{type:'text/tab-separated-values;charset=utf-8'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=`Template_${type}_${new Date().toISOString().split('T')[0]}.xls`;
-  a.click(); URL.revokeObjectURL(a.href);
-  toast('Template didownload','ok');
+  if (typeof XLSX !== 'undefined') {
+    // Mulai langsung dari header kolom, tanpa baris judul/petunjuk
+    const rows = [labels, ...contoh];
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = labels.map((h, i) => {
+      const maxLen = Math.max(h.length, ...contoh.map(r => String(r[i] ?? '').length));
+      return { wch: Math.min(Math.max(maxLen + 2, 12), 40) };
+    });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Template');
+    XLSX.writeFile(wb, `Template_${type}_${new Date().toISOString().split('T')[0]}.xlsx`);
+  } else {
+    const rows = [labels, ...contoh];
+    const csv = rows.map(r => r.map(c => `"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `Template_${type}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click(); URL.revokeObjectURL(a.href);
+  }
+  toast('Template didownload', 'ok');
 }
 
 // ---- INIT ----
@@ -243,3 +253,37 @@ document.addEventListener('DOMContentLoaded', () => {
   initSidebar();
   setHeaderDate();
 });
+
+// ---- SYNC INDICATOR ----
+// Tampil dot kecil di header saat ada background sync berjalan
+let _syncCount = 0;
+function _showSyncDot() {
+  _syncCount++;
+  let dot = document.getElementById('_syncDot');
+  if (!dot) {
+    dot = document.createElement('span');
+    dot.id = '_syncDot';
+    dot.title = 'Memperbarui data...';
+    dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:var(--primary);display:inline-block;margin-left:8px;animation:pulse 1s infinite';
+    document.querySelector('.header-right')?.prepend(dot);
+  }
+}
+function _hideSyncDot() {
+  _syncCount = Math.max(0, _syncCount - 1);
+  if (_syncCount === 0) document.getElementById('_syncDot')?.remove();
+}
+
+// Patch DB.sync untuk tampilkan indicator otomatis
+const _origSync = DB.sync.bind(DB);
+DB.sync = async function(table, opts) {
+  const fresh = DB.isFresh(table);
+  if (!fresh) _showSyncDot();
+  const result = await _origSync(table, opts);
+  if (!fresh) _hideSyncDot();
+  return result;
+};
+
+// CSS pulse animation
+const _style = document.createElement('style');
+_style.textContent = '@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}';
+document.head.appendChild(_style);

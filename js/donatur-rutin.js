@@ -6,13 +6,16 @@ let pgSemua=1, pgAktif=1, pgProspek=1, pgBayar=1;
 const PS = 15;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await loadAllData();
+  // Render dari cache dulu (langsung), sync background
+  loadStats(); loadSemua(); loadAktif(); loadProspek(); loadBayar(); loadProgramFilter();
   initTabs('drTabs', (target) => {
     if (target==='paneSemua') loadSemua();
     else if (target==='paneAktif') loadAktif();
     else if (target==='paneProspek') loadProspek();
     else if (target==='panePembayaran') loadBayar();
   });
+  // Sync background — update UI saat data tiba
+  await loadAllData();
   loadStats(); loadSemua(); loadAktif(); loadProspek(); loadBayar(); loadProgramFilter();
 
   document.getElementById('btnTambah')?.addEventListener('click', () => {
@@ -21,14 +24,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     else if (t==='panePembayaran') openModalBayar();
     else openModalDonatur();
   });
-  document.getElementById('srSemua')?.addEventListener('input', ()=>{pgSemua=1;loadSemua();});
+  document.getElementById('srSemua')?.addEventListener('input', debounce(()=>{pgSemua=1;loadSemua();}));
   document.getElementById('flSemuaStatus')?.addEventListener('change', ()=>{pgSemua=1;loadSemua();});
   document.getElementById('flSemuaProgram')?.addEventListener('change', ()=>{pgSemua=1;loadSemua();});
-  document.getElementById('srAktif')?.addEventListener('input', ()=>{pgAktif=1;loadAktif();});
+  document.getElementById('srAktif')?.addEventListener('input', debounce(()=>{pgAktif=1;loadAktif();}));
   document.getElementById('flProgram')?.addEventListener('change', ()=>{pgAktif=1;loadAktif();});
-  document.getElementById('srProspek')?.addEventListener('input', ()=>{pgProspek=1;loadProspek();});
+  document.getElementById('srProspek')?.addEventListener('input', debounce(()=>{pgProspek=1;loadProspek();}));
   document.getElementById('flProspekStatus')?.addEventListener('change', ()=>{pgProspek=1;loadProspek();});
-  document.getElementById('srBayar')?.addEventListener('input', ()=>{pgBayar=1;loadBayar();});
+  document.getElementById('srBayar')?.addEventListener('input', debounce(()=>{pgBayar=1;loadBayar();}));
   document.getElementById('flBulan')?.addEventListener('change', ()=>{pgBayar=1;loadBayar();});
 });
 
@@ -431,22 +434,65 @@ window.handleImpFile=function(file){
   const parse=async csv=>{
     const lines=csv.split(/\r?\n/).filter(l=>l.trim());
     if(lines.length<2) return;
-    const headers=lines[0].split(/,|\t/).map(h=>h.replace(/^"|"$/g,'').trim().toLowerCase().replace(/\s+/g,'_'));
-    const rows=lines.slice(1).map(line=>{
+    // Cari baris header: split dulu, lalu cek apakah kolom pertama adalah kata pendek seperti "nama lengkap" / "nama"
+    // bukan kalimat panjang seperti "PETUNJUK: ..."
+    let headerIdx=0;
+    for(let i=0;i<Math.min(8,lines.length);i++){
+      const cols=lines[i].split(/,|\t/).map(c=>c.replace(/^"|"$/g,'').trim());
+      if(cols.length>=3){
+        const first=cols[0].toLowerCase();
+        // Header valid: kolom pertama adalah nama pendek (max 20 char) dan mengandung 'nama'
+        if(first.length<=20 && first.includes('nama')){headerIdx=i;break;}
+      }
+    }
+    console.log('[Import] headerIdx:', headerIdx, '| header row:', lines[headerIdx]);
+    console.log('[Import] total lines:', lines.length, '| sample data:', lines[headerIdx+1]);
+    const HEADER_MAP = {
+      'nama_lengkap':'nama','nama lengkap':'nama','nama':'nama',
+      'no._hp':'hp','no_hp':'hp','nomor_hp':'hp','no._hp':'hp','no. hp':'hp','hp':'hp','telepon':'hp',
+      'alamat':'alamat','kota':'kota','kota/kabupaten':'kota',
+      'program_donasi':'program','program donasi':'program','program':'program',
+      'nominal/bulan':'nominal','nominal_bulan':'nominal','nominal':'nominal','donasi':'nominal',
+      'metode':'metode','metode_pembayaran':'metode',
+      'tgl_mulai':'tgl_mulai','tgl. mulai':'tgl_mulai','tanggal_mulai':'tgl_mulai','tgl mulai':'tgl_mulai',
+      'petugas':'petugas','catatan':'catatan','keterangan':'catatan',
+      'potensi_donasi':'nominal_potensi','nominal_potensi':'nominal_potensi','potensi donasi':'nominal_potensi',
+    };
+    const rawHeaders=lines[headerIdx].split(/,|\t/).map(h=>h.replace(/^"|"$/g,'').trim().toLowerCase());
+    const headers=rawHeaders.map(h=>HEADER_MAP[h.replace(/\s+/g,'_')]||HEADER_MAP[h]||h.replace(/\s+/g,'_'));
+    console.log('[Import] rawHeaders:', rawHeaders);
+    console.log('[Import] mapped headers:', headers);
+    const rows=lines.slice(headerIdx+1).map(line=>{
       const vals=[]; let inQ=false,cur='';
       for(const ch of line){if(ch==='"') inQ=!inQ; else if((ch===','||ch==='\t')&&!inQ){vals.push(cur.trim());cur='';}else cur+=ch;}
       vals.push(cur.trim());
       const obj={}; headers.forEach((h,i)=>obj[h]=(vals[i]||'').replace(/^"|"$/g,'').trim()); return obj;
-    }).filter(r=>r.nama);
+    });
+    console.log('[Import] rows before filter:', rows);
+    const filteredRows=rows.filter(r=>r.nama&&r.nama.length>0);
+    console.log('[Import] rows after filter (nama only):', filteredRows);
     const type=document.getElementById('importType')?.value||'donatur_rutin';
     let ok=0,gagal=0;
-    for(const row of rows){
-      const payload={nama:row.nama,hp:row.hp||'',alamat:row.alamat||'',kota:row.kota||'',
-        program:row.program||'',nominal:parseInt((row.nominal||'0').replace(/[^0-9]/g,''))||0,
-        metode:row.metode||'transfer',tgl_mulai:row.tgl_mulai||new Date().toISOString().split('T')[0],
-        status:type==='donatur_rutin'?'aktif':'baru',
-        nominal_potensi:parseInt((row.nominal||'0').replace(/[^0-9]/g,''))||0,
-        petugas:row.petugas||'',catatan:row.catatan||''};
+    for(const row of filteredRows){
+      let payload;
+      if(type==='donatur_rutin'){
+        payload={
+          nama:row.nama, hp:row.hp||'', alamat:row.alamat||'', kota:row.kota||'',
+          program:row.program||'',
+          nominal:parseInt((row.nominal||'0').replace(/[^0-9]/g,''))||0,
+          metode:row.metode||'transfer',
+          tgl_mulai:row.tgl_mulai||new Date().toISOString().split('T')[0],
+          status:'aktif',
+          petugas:row.petugas||'', catatan:row.catatan||''
+        };
+      } else {
+        payload={
+          nama:row.nama, hp:row.hp||'', alamat:row.alamat||'', kota:row.kota||'',
+          nominal_potensi:parseInt((row.nominal_potensi||row.nominal||'0').replace(/[^0-9]/g,''))||0,
+          status:'baru',
+          petugas:row.petugas||'', catatan:row.catatan||''
+        };
+      }
       const r=await DB.insert(type,payload);
       if(r) ok++; else gagal++;
     }

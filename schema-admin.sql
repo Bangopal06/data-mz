@@ -152,13 +152,20 @@ CREATE TABLE IF NOT EXISTS waqaf_program (
   nama TEXT NOT NULL,
   deskripsi TEXT,
   kategori TEXT DEFAULT 'sosial',
+  metode_waqaf TEXT DEFAULT 'tunai',
   target BIGINT DEFAULT 0,
   terkumpul BIGINT DEFAULT 0,
   tgl_mulai DATE,
   tgl_target DATE,
   status TEXT DEFAULT 'aktif',
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Jalankan ini jika tabel waqaf_program sudah ada (migration):
+-- ALTER TABLE waqaf_program ADD COLUMN IF NOT EXISTS metode_waqaf TEXT DEFAULT 'tunai';
+-- ALTER TABLE waqaf_program ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+-- CREATE TRIGGER tr_waqaf_program BEFORE UPDATE ON waqaf_program FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- Donatur Waqaf
 CREATE TABLE IF NOT EXISTS donatur_waqaf (

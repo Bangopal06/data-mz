@@ -7,21 +7,20 @@ const PS = 12;
 const BULAN_NAMA = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await Promise.all([
-    DB.sync('kcs_data'),
-    DB.sync('kcs_prospek'),
-    DB.sync('kcs_pengambilan')
-  ]);
+  // Render dari cache dulu
+  loadKcsStats(); loadKcsData(); loadKcsProspek(); initKcsAmbilFilter();
   initTabs('kcsTabs', (target) => {
     if (target === 'paneKcsData') loadKcsData();
     else if (target === 'paneKcsProspek') loadKcsProspek();
     else if (target === 'paneKcsAmbil') { initKcsAmbilFilter(); loadKcsAmbil(); }
   });
-
-  loadKcsStats();
-  loadKcsData();
-  loadKcsProspek();
-  initKcsAmbilFilter();
+  // Sync background
+  await Promise.all([
+    DB.sync('kcs_data'),
+    DB.sync('kcs_prospek'),
+    DB.sync('kcs_pengambilan')
+  ]);
+  loadKcsStats(); loadKcsData(); loadKcsProspek();
 
   document.getElementById('btnTambahKCS')?.addEventListener('click', () => {
     const t = document.querySelector('#kcsTabs .tab.active')?.dataset.target;
@@ -30,14 +29,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     else openModalKcs();
   });
 
-  ['srKcsData','srKcsKota','flKcsStatus','flKcsFrekuensi'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', () => { pgKcsData=1; loadKcsData(); });
-    document.getElementById(id)?.addEventListener('change', () => { pgKcsData=1; loadKcsData(); });
-  });
-  ['srKcsProspek','flKcsProspekStatus'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', () => { pgKcsProspek=1; loadKcsProspek(); });
-    document.getElementById(id)?.addEventListener('change', () => { pgKcsProspek=1; loadKcsProspek(); });
-  });
+  ['srKcsData','srKcsKota'].forEach(id => document.getElementById(id)?.addEventListener('input', debounce(() => { pgKcsData=1; loadKcsData(); })));
+  ['flKcsStatus','flKcsFrekuensi'].forEach(id => document.getElementById(id)?.addEventListener('change', () => { pgKcsData=1; loadKcsData(); }));
+  ['srKcsProspek'].forEach(id => document.getElementById(id)?.addEventListener('input', debounce(() => { pgKcsProspek=1; loadKcsProspek(); })));
+  ['flKcsProspekStatus'].forEach(id => document.getElementById(id)?.addEventListener('change', () => { pgKcsProspek=1; loadKcsProspek(); }));
 });
 
 // ---- STATS ----

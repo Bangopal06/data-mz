@@ -357,3 +357,37 @@ textarea.fctrl{resize:vertical;min-height:76px}
 .w-full{width:100%}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-thumb{background:var(--gray-300);border-radius:3px}
+
+/* ---- PERFORMANCE & RESPONSIVENESS ---- */
+/* Smooth nav transition */
+.nav-item{transition:background .12s,color .12s}
+
+/* Table row hover smooth */
+tbody tr{transition:background .1s}
+
+/* Card hover lift */
+.kotak-card,.prog-card,.stat{transition:box-shadow .15s,transform .15s}
+.kotak-card:hover,.prog-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.1);transform:translateY(-1px)}
+
+/* Page fade-in */
+.page{animation:pageFade .18s ease-out}
+@keyframes pageFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* Button active press feel */
+.btn:active{transform:scale(.97);transition:transform .05s}
+
+/* Skeleton loader */
+.skeleton{background:linear-gradient(90deg,var(--gray-200) 25%,var(--gray-100) 50%,var(--gray-200) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:6px;display:inline-block}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* Input focus smooth */
+.fctrl,.inp,.sel{transition:border-color .15s,box-shadow .15s}
+
+/* Modal faster on mobile */
+@media(max-width:768px){
+  .modal{animation:slideUpMobile .18s}
+  @keyframes slideUpMobile{from{transform:translateY(100%)}to{transform:translateY(0)}}
+}
+
+/* Stat number animation */
+.stat .val{transition:all .2s}

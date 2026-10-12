@@ -1,6 +1,10 @@
 ﻿const BULAN_NAMA = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  initFilter();
+  renderKotak();
+  // Background sync — refresh data jika cache stale
+  await Promise.all([DB.sync('kotak_infaq'), DB.sync('pengambilan_kotak')]);
   initFilter();
   renderKotak();
 });
