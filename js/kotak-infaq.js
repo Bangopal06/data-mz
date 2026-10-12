@@ -9,13 +9,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     else if (target === 'paneProspekKotak') loadProsKotak();
     else if (target === 'panePengambilan') { initAmbilFilter(); loadAmbilByBulan(); }
   });
-  // Sync background
-  await Promise.all([
-    DB.sync('kotak_infaq'),
-    DB.sync('prospek_kotak'),
-    DB.sync('pengambilan_kotak')
-  ]);
-  loadKiStats(); loadKotak(); loadProsKotak(); loadAmbil();
 
   document.getElementById('btnTambahKI').addEventListener('click', () => {
     const tab = document.querySelector('#kiTabs .tab.active').dataset.target;
@@ -23,6 +16,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     else if (tab === 'paneProspekKotak') openModalProsKotak();
     else openModalAmbil();
   });
+
+  // Sync background
+  try {
+    await Promise.all([
+      DB.sync('kotak_infaq'),
+      DB.sync('prospek_kotak'),
+      DB.sync('pengambilan_kotak')
+    ]);
+  } catch(e) { console.warn('Sync error:', e); }
+  loadKiStats(); loadKotak(); loadProsKotak(); loadAmbil();
 
   ['srKotak','srKotaKota'].forEach(id => document.getElementById(id)?.addEventListener('input', debounce(() => { pgKotak=1; loadKotak(); })));
   ['flKotakStatus','flFrekuensi'].forEach(id => document.getElementById(id)?.addEventListener('change', () => { pgKotak=1; loadKotak(); }));

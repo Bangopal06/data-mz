@@ -14,13 +14,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     else if (target === 'paneKcsProspek') loadKcsProspek();
     else if (target === 'paneKcsAmbil') { initKcsAmbilFilter(); loadKcsAmbil(); }
   });
-  // Sync background
-  await Promise.all([
-    DB.sync('kcs_data'),
-    DB.sync('kcs_prospek'),
-    DB.sync('kcs_pengambilan')
-  ]);
-  loadKcsStats(); loadKcsData(); loadKcsProspek();
 
   document.getElementById('btnTambahKCS')?.addEventListener('click', () => {
     const t = document.querySelector('#kcsTabs .tab.active')?.dataset.target;
@@ -28,6 +21,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     else if (t === 'paneKcsAmbil') openModalKcsAmbil();
     else openModalKcs();
   });
+
+  // Sync background
+  try {
+    await Promise.all([
+      DB.sync('kcs_data'),
+      DB.sync('kcs_prospek'),
+      DB.sync('kcs_pengambilan')
+    ]);
+  } catch(e) { console.warn('Sync error:', e); }
+  loadKcsStats(); loadKcsData(); loadKcsProspek();
 
   ['srKcsData','srKcsKota'].forEach(id => document.getElementById(id)?.addEventListener('input', debounce(() => { pgKcsData=1; loadKcsData(); })));
   ['flKcsStatus','flKcsFrekuensi'].forEach(id => document.getElementById(id)?.addEventListener('change', () => { pgKcsData=1; loadKcsData(); }));

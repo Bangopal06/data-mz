@@ -9,20 +9,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     else if (target === 'paneDonaturWQ') loadDonaturWQ();
     else if (target === 'paneProspekWQ') loadProspekWQ();
   });
-  // Sync background
-  await Promise.all([
-    DB.sync('waqaf_program'),
-    DB.sync('donatur_waqaf'),
-    DB.sync('prospek_waqaf')
-  ]);
-  loadWqStats(); loadProgram(); loadDonaturWQ(); loadProspekWQ(); loadProgramFilter();
 
+  // Pasang listener dulu sebelum sync supaya tombol langsung bisa diklik
   document.getElementById('btnTambahWQ').addEventListener('click', () => {
     const tab = document.querySelector('#wqTabs .tab.active').dataset.target;
     if (tab === 'paneProgram') openModalProgram();
     else if (tab === 'paneDonaturWQ') openModalDonWQ();
     else openModalProsWQ();
   });
+
+  // Sync background
+  try {
+    await Promise.all([
+      DB.sync('waqaf_program'),
+      DB.sync('donatur_waqaf'),
+      DB.sync('prospek_waqaf')
+    ]);
+  } catch(e) { console.warn('Sync error:', e); }
+  loadWqStats(); loadProgram(); loadDonaturWQ(); loadProspekWQ(); loadProgramFilter();
 
   ['srProg','flKatProg','flStProg'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', debounce(() => { pgProg=1; loadProgram(); }));
