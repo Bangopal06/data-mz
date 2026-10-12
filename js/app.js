@@ -2,57 +2,6 @@
 // SHARED UTILITIES - Supabase version
 // =============================================
 
-// ---- DATA STORAGE — Supabase + localStorage cache ----
-const DB = {
-  // Baca dari cache lokal (sync)
-  get: (table) => {
-    try {
-      return JSON.parse(localStorage.getItem('sb_' + table) || '[]');
-    } catch { return []; }
-  },
-  // Tulis ke cache lokal + Supabase (async background)
-  set: (table, arr) => {
-    localStorage.setItem('sb_' + table, JSON.stringify(arr));
-    // Tidak perlu sync manual — tiap operasi langsung ke Supabase
-  },
-  // Fetch dari Supabase dan update cache
-  sync: async (table) => {
-    if (!window.supa) return DB.get(table);
-    try {
-      const { data } = await supa.from(table).select('*').order('created_at', { ascending: false });
-      const d = data || [];
-      localStorage.setItem('sb_' + table, JSON.stringify(d));
-      return d;
-    } catch { return DB.get(table); }
-  },
-  // Insert ke Supabase
-  insert: async (table, payload) => {
-    if (!window.supa) { return null; }
-    const p = { ...payload };
-    if (!p.id) delete p.id;
-    delete p._type;
-    const { data, error } = await supa.from(table).insert(p).select().single();
-    if (error) { console.error('insert', table, error.message); return null; }
-    return data;
-  },
-  // Update ke Supabase
-  update: async (table, id, payload) => {
-    if (!window.supa) return null;
-    const p = { ...payload };
-    delete p.id; delete p.created_at; delete p._type;
-    const { data, error } = await supa.from(table).update(p).eq('id', id).select().single();
-    if (error) { console.error('update', table, error.message); return null; }
-    return data;
-  },
-  // Delete dari Supabase
-  delete: async (table, id) => {
-    if (!window.supa) return false;
-    const { error } = await supa.from(table).delete().eq('id', id);
-    if (error) { console.error('delete', table, error.message); return false; }
-    return true;
-  }
-};
-
 // ---- KONFIRMASI POPUP ----
 function showConfirm({ icon = '❓', title = 'Konfirmasi', message = '', confirmText = 'Ya', confirmClass = 'btn-primary', cancelText = 'Batal' }) {
   return new Promise(resolve => {
