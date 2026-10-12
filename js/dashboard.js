@@ -50,7 +50,8 @@ function renderDashboard() {
   const bayarBulanIni = bayar.filter(p=>p.tgl_bayar?.startsWith(bulanIni)).reduce((s,p)=>s+(+p.nominal||0),0);
   const ambilKIBulanIni = ambilKI.filter(a=>a.tgl_ambil?.startsWith(bulanIni)).reduce((s,a)=>s+(+a.nominal||0),0);
   const ambilKCSBulanIni = ambilKCS.filter(a=>a.tgl_ambil?.startsWith(bulanIni)).reduce((s,a)=>s+(+a.nominal||0),0);
-  const totalBulanIni = bayarBulanIni + ambilKIBulanIni + ambilKCSBulanIni;
+  const waqafBulanIni = dw.filter(d=>d.tgl_donasi?.startsWith(bulanIni)&&d.status==='lunas').reduce((s,d)=>s+(+d.nominal||0),0);
+  const totalBulanIni = bayarBulanIni + ambilKIBulanIni + ambilKCSBulanIni + waqafBulanIni;
 
   const bulanLabel = new Date().toLocaleDateString('id-ID',{month:'long',year:'numeric'});
 
@@ -70,6 +71,7 @@ function renderDashboard() {
           <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">Donasi: ${rupiah(bayarBulanIni)}</span>
           <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">Kotak: ${rupiah(ambilKIBulanIni)}</span>
           <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">KCS: ${rupiah(ambilKCSBulanIni)}</span>
+          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">Waqaf: ${rupiah(waqafBulanIni)}</span>
         </div>
       </div>
     </div>
