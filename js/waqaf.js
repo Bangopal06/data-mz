@@ -173,9 +173,24 @@ window.saveProgram = async function(id) {
     tgl_mulai:document.getElementById('wpMulai').value||null,
     tgl_target:document.getElementById('wpTarget2').value||null
   };
-  const r = id ? await DB.update('waqaf_program',id,payload) : await DB.insert('waqaf_program',payload);
-  if (!r) { toast('Gagal menyimpan','err'); return; }
-  await DB.sync('waqaf_program');
+  console.log('saveProgram payload:', payload);
+  let r;
+  if (id) {
+    r = await DB.update('waqaf_program', id, payload);
+  } else {
+    const { data, error } = await supa.from('waqaf_program').insert(payload).select().single();
+    if (error) {
+      console.error('Supabase insert error:', error);
+      toast('Error: ' + error.message, 'err');
+      return;
+    }
+    r = data;
+    const list = DB.get('waqaf_program');
+    list.unshift(r);
+    DB.set('waqaf_program', list);
+  }
+  if (!r) { toast('Gagal menyimpan — cek Console (F12)','err'); return; }
+  await DB.sync('waqaf_program', { force: true });
   toast(id?'Program diperbarui':'Program berhasil ditambahkan','ok');
   closeModal('ovProgram'); loadWqStats(); loadProgram(); loadProgramFilter();
 };
