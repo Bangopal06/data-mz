@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
@@ -38,35 +38,35 @@
 <div id="sbOverlay" class="sidebar-overlay"></div>
 <div class="layout">
   <aside class="sidebar" id="sidebar">
-    <div class="sidebar-brand"><div class="brand-icon">??</div><h2>Lembaga Sosial</h2><p>Panel Admin</p></div>
+    <div class="sidebar-brand"><div class="brand-icon">🤝</div><h2>Lembaga Sosial</h2><p>Panel Admin</p></div>
                 <nav class="sidebar-nav">
       <div class="nav-label">Menu Utama</div>
-      <a href="index.html" class="nav-item"><span class="icon">??</span> Dashboard</a>
+      <a href="index.html" class="nav-item"><span class="icon">🏠</span> Dashboard</a>
       <div class="nav-label">Donatur Rutin</div>
-      <a href="donatur-rutin.html" class="nav-item"><span class="icon">??</span> Donatur Rutin</a>
+      <a href="donatur-rutin.html" class="nav-item"><span class="icon">💚</span> Donatur Rutin</a>
       <div class="nav-label">Kotak Infaq</div>
-      <a href="kotak-infaq.html" class="nav-item"><span class="icon">???</span> Kotak Infaq</a>
-      <a href="kcs.html" class="nav-item"><span class="icon">??</span> KCS</a>
+      <a href="kotak-infaq.html" class="nav-item"><span class="icon">🗃️</span> Kotak Infaq</a>
+      <a href="kcs.html" class="nav-item"><span class="icon">📦</span> KCS</a>
       <div class="nav-label">Waqaf</div>
-      <a href="waqaf.html" class="nav-item"><span class="icon">??</span> Program Waqaf</a>
+      <a href="waqaf.html" class="nav-item"><span class="icon">🕌</span> Program Waqaf</a>
       <div class="nav-label">Laporan</div>
-      <a href="laporan-donatur.html" class="nav-item"><span class="icon">??</span> Lap. Donatur Rutin</a>
-      <a href="laporan-kotak.html" class="nav-item"><span class="icon">???</span> Lap. Kotak Infaq</a>
-      <a href="laporan-kcs.html" class="nav-item"><span class="icon">??</span> Lap. KCS</a>
+      <a href="laporan-donatur.html" class="nav-item"><span class="icon">💚</span> Lap. Donatur Rutin</a>
+      <a href="laporan-kotak.html" class="nav-item"><span class="icon">🗃️</span> Lap. Kotak Infaq</a>
+      <a href="laporan-kcs.html" class="nav-item"><span class="icon">📦</span> Lap. KCS</a>
       <div class="nav-label">Import/Export</div>
-      <a href="import.html" class="nav-item"><span class="icon">??</span> Import Data</a>
+      <a href="import.html" class="nav-item"><span class="icon">📥</span> Import Data</a>
     </nav>
     <div class="sidebar-footer"><div class="avatar">A</div><div class="user-info"><div class="user-name">Administrator</div><div class="user-role">Super Admin</div></div></div>
   </aside>
 
   <div class="main">
     <header class="header">
-      <button class="header-menu" id="menuBtn">?</button>
-      <div class="header-title">?? Laporan Keuangan</div>
+      <button class="header-menu" id="menuBtn">☰</button>
+      <div class="header-title">📈 Laporan Keuangan</div>
       <div class="header-right">
         <span class="header-date" id="headerDate"></span>
-        <button class="btn btn-outline btn-sm no-print" onclick="exportLaporan()">?? Export CSV</button>
-        <button class="btn btn-primary btn-sm no-print" onclick="window.print()">??? Print</button>
+        <button class="btn btn-outline btn-sm no-print" onclick="exportLaporan()">⬇️ Export CSV</button>
+        <button class="btn btn-primary btn-sm no-print" onclick="window.print()">🖨️ Print</button>
       </div>
     </header>
 
@@ -106,13 +106,13 @@
       <!-- GRAFIK -->
       <div class="chart-row" style="margin-bottom:20px">
         <div class="chart-box">
-          <div class="ct">?? Pendapatan Per Bulan (Tahun Berjalan)</div>
+          <div class="ct">📊 Pendapatan Per Bulan (Tahun Berjalan)</div>
           <div style="height:180px;position:relative">
             <canvas id="chartBulanan"></canvas>
           </div>
         </div>
         <div class="chart-box">
-          <div class="ct">?? Komposisi Sumber Dana</div>
+          <div class="ct">🥧 Komposisi Sumber Dana</div>
           <div style="height:180px;position:relative">
             <canvas id="chartKomposisi"></canvas>
           </div>
@@ -121,7 +121,7 @@
 
       <!-- LAPORAN DONATUR RUTIN -->
       <div class="lap-section" id="secDonatur">
-        <div class="lap-section-title">?? Laporan Donatur Rutin</div>
+        <div class="lap-section-title">💚 Laporan Donatur Rutin</div>
         <div class="card">
           <div class="card-head">
             <div class="card-title">Rincian Pembayaran Donatur Rutin</div>
@@ -139,7 +139,7 @@
 
       <!-- LAPORAN KOTAK INFAQ -->
       <div class="lap-section" id="secKotak">
-        <div class="lap-section-title">??? Laporan Kotak Infaq</div>
+        <div class="lap-section-title">🗃️ Laporan Kotak Infaq</div>
 
         <!-- Per Toko -->
         <div class="card" style="margin-bottom:16px">
@@ -171,7 +171,7 @@
 
       <!-- REKAPITULASI BULANAN -->
       <div class="lap-section">
-        <div class="lap-section-title">?? Rekapitulasi Bulanan</div>
+        <div class="lap-section-title">📅 Rekapitulasi Bulanan</div>
         <div class="card">
           <div class="tbl-wrap">
             <table id="tblRekap">
@@ -188,7 +188,8 @@
 </div>
 <div id="toast-wrap"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/supabase.js"></script>`n<script src="js/db.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/db.js"></script>
 <script src="js/app.js"></script>
 <script src="js/laporan.js"></script>
 </body>
