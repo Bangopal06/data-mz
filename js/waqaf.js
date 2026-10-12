@@ -159,6 +159,9 @@ window.saveProgram = async function(id) {
   if (!nama || !target) { toast('Nama dan target wajib diisi','warn'); return; }
   const ok = await confirmSave(`Simpan program waqaf <strong>${nama}</strong>?`);
   if (!ok) return;
+  // Disable tombol simpan supaya tidak bisa diklik dua kali
+  const btnSimpan = document.querySelector('#ovProgram .btn-primary');
+  if (btnSimpan) { btnSimpan.disabled = true; btnSimpan.textContent = 'Menyimpan...'; }
   const payload = {
     nama,
     deskripsi: document.getElementById('wpDesc').value.trim(),
@@ -265,6 +268,8 @@ window.saveDonWQ = async function(id) {
   if (!nama || !nominal || !programId) { toast('Nama, program, dan nominal wajib diisi','warn'); return; }
   const ok = await confirmSave(`Catat donasi waqaf <strong>${rupiah(nominal)}</strong> dari <strong>${nama}</strong>?`);
   if (!ok) return;
+  const btnSimpan = document.querySelector('#ovDonWQ .btn-primary');
+  if (btnSimpan) { btnSimpan.disabled = true; btnSimpan.textContent = 'Menyimpan...'; }
   const payload = {
     nama, hp: document.getElementById('dwHP').value.trim(),
     alamat: document.getElementById('dwAlamat').value.trim(),
