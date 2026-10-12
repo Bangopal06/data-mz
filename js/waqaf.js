@@ -190,16 +190,16 @@ window.saveProgram = async function(id) {
     DB.set('waqaf_program', list);
   }
   if (!r) { toast('Gagal menyimpan — cek Console (F12)','err'); return; }
-  await DB.sync('waqaf_program', { force: true });
   toast(id?'Program diperbarui':'Program berhasil ditambahkan','ok');
   closeModal('ovProgram'); loadWqStats(); loadProgram(); loadProgramFilter();
+  DB.sync('waqaf_program', { force: true }).then(() => { loadWqStats(); loadProgram(); loadProgramFilter(); });
 };
 
 window.hapusProgram = async function(id) {
   if (!await confirmDel('Hapus program waqaf ini?')) return;
   await DB.delete('waqaf_program',id);
-  await DB.sync('waqaf_program');
   toast('Dihapus','ok'); loadWqStats(); loadProgram();
+  DB.sync('waqaf_program', { force: true });
 };
 
 // ============ DONATUR WAQAF ============
@@ -294,27 +294,27 @@ window.saveDonWQ = async function(id) {
   const r = id ? await DB.update('donatur_waqaf',id,payload) : await DB.insert('donatur_waqaf',payload);
   if (!r) { toast('Gagal menyimpan','err'); return; }
   // Update terkumpul di program
-  await DB.sync('donatur_waqaf');
   const allDon = DB.get('donatur_waqaf');
   const totalProg = allDon.filter(d=>d.program_id===programId&&d.status==='lunas').reduce((s,d)=>s+(+d.nominal||0),0);
   await DB.update('waqaf_program', programId, { terkumpul: totalProg });
-  await DB.sync('waqaf_program');
   toast(id?'Data diperbarui':'Donasi waqaf berhasil dicatat','ok');
   closeModal('ovDonWQ'); loadWqStats(); loadProgram(); loadDonaturWQ();
+  DB.sync('donatur_waqaf', { force: true });
+  DB.sync('waqaf_program', { force: true });
 };
 
 window.hapusDonWQ = async function(id) {
   if (!await confirmDel()) return;
   const d = DB.get('donatur_waqaf').find(x=>x.id===id);
   await DB.delete('donatur_waqaf',id);
-  await DB.sync('donatur_waqaf');
   if (d?.program_id) {
     const allDon = DB.get('donatur_waqaf');
     const totalProg = allDon.filter(x=>x.program_id===d.program_id&&x.status==='lunas').reduce((s,x)=>s+(+x.nominal||0),0);
     await DB.update('waqaf_program', d.program_id, { terkumpul: totalProg });
-    await DB.sync('waqaf_program');
+    DB.sync('waqaf_program', { force: true });
   }
   toast('Dihapus','ok'); loadWqStats(); loadDonaturWQ(); loadProgram();
+  DB.sync('donatur_waqaf', { force: true });
 };
 
 // ============ PROSPEK WAQAF ============
@@ -394,15 +394,15 @@ window.saveProsWQ = async function(id) {
   };
   const r = id ? await DB.update('prospek_waqaf',id,payload) : await DB.insert('prospek_waqaf',payload);
   if (!r) { toast('Gagal menyimpan','err'); return; }
-  await DB.sync('prospek_waqaf');
   toast('Data prospek tersimpan','ok'); closeModal('ovProsWQ'); loadWqStats(); loadProspekWQ();
+  DB.sync('prospek_waqaf', { force: true });
 };
 
 window.hapusProsWQ = async function(id) {
   if (!await confirmDel()) return;
   await DB.delete('prospek_waqaf',id);
-  await DB.sync('prospek_waqaf');
   toast('Dihapus','ok'); loadWqStats(); loadProspekWQ();
+  DB.sync('prospek_waqaf', { force: true });
 };
 
 window.jadikanDonaturWQ = function(id) {
