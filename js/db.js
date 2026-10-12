@@ -5,6 +5,17 @@
 const _cache = {};
 const CACHE_TTL = 5 * 60 * 1000; // 5 menit
 
+// Versi cache — naikkan ini untuk force clear cache lama di semua browser
+const CACHE_VERSION = '2';
+(function _checkCacheVersion() {
+  try {
+    if (sessionStorage.getItem('__db_cache_ver') !== CACHE_VERSION) {
+      sessionStorage.removeItem('__db_cache');
+      sessionStorage.setItem('__db_cache_ver', CACHE_VERSION);
+    }
+  } catch(e) {}
+})();
+
 // Load semua cache dari sessionStorage saat pertama kali
 (function _restoreCache() {
   try {
