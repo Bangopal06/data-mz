@@ -287,9 +287,17 @@ window.doImport = async function() {
       <div class="stat"><div class="stat-ico ic-yellow">⏭️</div><div class="stat-body"><div class="lbl">Dilewati</div><div class="val">${skip}</div></div></div>
       <div class="stat"><div class="stat-ico ic-red">❌</div><div class="stat-body"><div class="lbl">Error</div><div class="val">${error}</div></div></div>
     </div>
-    <div style="max-height:300px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:8px;padding:12px">
-      ${results.map(r=>`<div class="result-item ${r.ok?'ri-ok':'ri-err'}"><span>${r.ok?'✓':'✕'}</span><span>${r.msg}</span></div>`).join('')}
-    </div>`;
+    ${(skip + error) > 0 ? `
+    <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px 16px;margin-bottom:12px">
+      <div style="font-weight:700;color:#92400e;margin-bottom:8px">⚠️ ${skip+error} baris bermasalah:</div>
+      ${results.filter(r=>!r.ok).map(r=>`<div style="font-size:12px;color:#92400e;padding:2px 0">• ${r.msg}</div>`).join('')}
+    </div>` : ''}
+    <details style="border:1px solid var(--gray-200);border-radius:8px">
+      <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600">Detail semua baris (${results.length})</summary>
+      <div style="max-height:250px;overflow-y:auto;padding:8px 12px">
+        ${results.map(r=>`<div class="result-item ${r.ok?'ri-ok':'ri-err'}"><span>${r.ok?'✓':'✕'}</span><span>${r.msg}</span></div>`).join('')}
+      </div>
+    </details>`;
 
   document.getElementById('importResult').innerHTML = summary;
   showStep(4);
