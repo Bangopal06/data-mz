@@ -324,8 +324,20 @@ window.loadAmbilByBulan = function() {
 window.goPgAmbil = p => { pgAmbil=p; loadAmbil(); };
 window.hapusAmbil = async function(id) {
   if (!await confirmDel('Hapus riwayat pengambilan ini?')) return;
-  DB.set('pengambilan_kotak', DB.get('pengambilan_kotak').filter(x=>x.id!==id));
-  toast('Dihapus','ok'); loadKiStats(); loadAmbilByBulan();
+  const ambil = DB.get('pengambilan_kotak').find(x=>x.id===id);
+  if (!await DB.delete('pengambilan_kotak', id)) { toast('Gagal menghapus','err'); return; }
+  // Reset nominal_terakhir di kotak jika ini adalah pengambilan terakhirnya
+  if (ambil?.kotak_id) {
+    const sisaAmbil = DB.get('pengambilan_kotak').filter(x=>x.kotak_id===ambil.kotak_id);
+    const terakhir = sisaAmbil.sort((a,b)=>new Date(b.tgl_ambil)-new Date(a.tgl_ambil))[0];
+    await DB.update('kotak_infaq', ambil.kotak_id, {
+      nominal_terakhir: terakhir ? terakhir.nominal : 0,
+      tgl_ambil: terakhir ? terakhir.tgl_ambil : null
+    });
+  }
+  await DB.sync('pengambilan_kotak', { force: true });
+  await DB.sync('kotak_infaq', { force: true });
+  toast('Dihapus','ok'); loadKiStats(); loadKotak(); loadAmbilByBulan();
 };
 window.hapusAmbilById = window.hapusAmbil;
 

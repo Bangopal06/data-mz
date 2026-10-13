@@ -318,8 +318,19 @@ window.loadKcsAmbil = function() {
 
 window.hapusKcsAmbil = async function(id) {
   if (!await confirmDel('Hapus riwayat pengambilan ini?')) return;
-  DB.set('kcs_pengambilan',DB.get('kcs_pengambilan').filter(x=>x.id!==id));
-  toast('Dihapus','ok'); loadKcsStats(); loadKcsAmbil();
+  const ambil = DB.get('kcs_pengambilan').find(x=>x.id===id);
+  if (!await DB.delete('kcs_pengambilan', id)) { toast('Gagal menghapus','err'); return; }
+  if (ambil?.kcs_id) {
+    const sisa = DB.get('kcs_pengambilan').filter(x=>x.kcs_id===ambil.kcs_id);
+    const terakhir = sisa.sort((a,b)=>new Date(b.tgl_ambil)-new Date(a.tgl_ambil))[0];
+    await DB.update('kcs_data', ambil.kcs_id, {
+      nominal_terakhir: terakhir ? terakhir.nominal : 0,
+      tgl_ambil: terakhir ? terakhir.tgl_ambil : null
+    });
+  }
+  await DB.sync('kcs_pengambilan', { force: true });
+  await DB.sync('kcs_data', { force: true });
+  toast('Dihapus','ok'); loadKcsStats(); loadKcsData(); loadKcsAmbil();
 };
 
 // ---- PROSPEK KCS ----
