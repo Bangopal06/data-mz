@@ -189,7 +189,7 @@ window.openModalDonatur=function(id=null){
           <div class="fg"><label class="flabel">No. HP *</label><input id="dHP" class="fctrl" value="${d?.hp||''}"></div>
           <div class="fg fcol2"><label class="flabel">Alamat</label><input id="dAlamat" class="fctrl" value="${d?.alamat||''}"></div>
           <div class="fg"><label class="flabel">Kota</label><input id="dKota" class="fctrl" value="${d?.kota||''}"></div>
-          <div class="fg"><label class="flabel">Petugas</label><input id="dPetugas" class="fctrl" value="${d?.petugas||''}"></div>
+          <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('dPetugas', d?.petugas||'')}</div>
         </div>
         <div class="sec-div">Data Donasi</div>
         <div class="fgrid">
@@ -213,6 +213,7 @@ window.openModalDonatur=function(id=null){
         <button class="btn btn-primary" onclick="saveDonatur('${id||''}')">Simpan</button>
       </div>
     </div></div>`);
+  initPetugasSelect('dPetugas');
 };
 
 window.saveDonatur=async function(id){
@@ -222,7 +223,7 @@ window.saveDonatur=async function(id){
   if(!nama||!hp||!nominal){toast('Nama, HP, dan nominal wajib diisi','warn');return;}
   if(!await confirmSave(`Simpan donatur <strong>${nama}</strong>?`)) return;
   const payload={nama,hp,alamat:document.getElementById('dAlamat').value.trim(),
-    kota:document.getElementById('dKota').value.trim(),petugas:document.getElementById('dPetugas').value.trim(),
+    kota:document.getElementById('dKota').value.trim(),petugas:getPetugas('dPetugas'),
     program:document.getElementById('dProgram').value.trim(),nominal,metode:document.getElementById('dMetode').value,
     tgl_mulai:document.getElementById('dMulai').value,status:document.getElementById('dStatus').value,
     catatan:document.getElementById('dCatatan').value.trim()};
@@ -289,7 +290,7 @@ window.openModalBayar=function(donaturId=null){
         <div class="fgrid">
           <div class="fg"><label class="flabel">Tanggal *</label><input type="date" id="bTgl" class="fctrl" value="${new Date().toISOString().split('T')[0]}"></div>
           <div class="fg"><label class="flabel">Nominal (Rp) *</label><input type="number" id="bNominal" class="fctrl" value="${sel?.nominal||''}"></div>
-          <div class="fg"><label class="flabel">Petugas</label><input id="bPetugas" class="fctrl" value="${sel?.petugas||''}"></div>
+          <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('bPetugas', sel?.petugas||'')}</div>
           <div class="fg"><label class="flabel">Catatan</label><input id="bCatatan" class="fctrl" placeholder="Opsional"></div>
         </div>
       </div>
@@ -298,12 +299,12 @@ window.openModalBayar=function(donaturId=null){
         <button class="btn btn-success" onclick="saveBayar()">Simpan</button>
       </div>
     </div></div>`);
+  initPetugasSelect('bPetugas');
 };
 
 window.onPilihDonatur=function(sel){
   const d=DB.get('donatur_rutin').find(x=>x.id===sel.value); if(!d) return;
   const n=document.getElementById('bNominal'); if(n) n.value=d.nominal||'';
-  const p=document.getElementById('bPetugas'); if(p&&!p.value) p.value=d.petugas||'';
 };
 
 window.saveBayar=async function(){
@@ -315,7 +316,7 @@ window.saveBayar=async function(){
   if(!await confirmSave(`Catat pembayaran <strong>${rupiah(nominal)}</strong> untuk <strong>${donatur?.nama}</strong>?`)) return;
   const r=await DB.insert('pembayaran_rutin',{donatur_id:donaturId,nama_donatur:donatur?.nama,
     nominal,tgl_bayar:tglBayar,metode:donatur?.metode||'transfer',
-    petugas:document.getElementById('bPetugas').value.trim(),
+    petugas:getPetugas('bPetugas'),
     catatan:document.getElementById('bCatatan').value.trim()});
   if(!r){toast('Gagal menyimpan','err');return;}
   await DB.sync('pembayaran_rutin');
@@ -343,7 +344,7 @@ window.openModalProspek=function(id=null){
         <div class="fg"><label class="flabel">Status</label>
           <select id="pStatus" class="fctrl">${['baru','dihubungi','survei'].map(s=>`<option value="${s}" ${d?.status===s?'selected':''}>${s}</option>`).join('')}</select>
         </div>
-        <div class="fg"><label class="flabel">Petugas</label><input id="pPetugas" class="fctrl" value="${d?.petugas||''}"></div>
+        <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('pPetugas', d?.petugas||'')}</div>
         <div class="fg fcol2"><label class="flabel">Catatan</label><textarea id="pCatatan" class="fctrl">${d?.catatan||''}</textarea></div>
       </div></div>
       <div class="modal-foot">
@@ -351,6 +352,7 @@ window.openModalProspek=function(id=null){
         <button class="btn btn-primary" onclick="saveProspek('${id||''}')">Simpan</button>
       </div>
     </div></div>`);
+  initPetugasSelect('pPetugas');
 };
 
 window.saveProspek=async function(id){
@@ -362,7 +364,7 @@ window.saveProspek=async function(id){
     kota:document.getElementById('pKota').value.trim(),
     nominal_potensi:+document.getElementById('pPotensi').value||0,
     status:document.getElementById('pStatus').value,
-    petugas:document.getElementById('pPetugas').value.trim(),
+    petugas:getPetugas('pPetugas'),
     catatan:document.getElementById('pCatatan').value.trim()};
   const r=id?await DB.update('prospek_rutin',id,payload):await DB.insert('prospek_rutin',payload);
   if(!r){toast('Gagal menyimpan','err');return;}

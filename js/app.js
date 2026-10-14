@@ -201,6 +201,8 @@ function buildTemplateExcel(title, labels, headers, contoh, type) {
 document.addEventListener('DOMContentLoaded', () => {
   initSidebar();
   setHeaderDate();
+  // Load petugas ke cache untuk dropdown
+  DB.sync('petugas');
 });
 
 // ---- SYNC INDICATOR ----
@@ -236,3 +238,48 @@ DB.sync = async function(table, opts) {
 const _style = document.createElement('style');
 _style.textContent = '@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}';
 document.head.appendChild(_style);
+
+// ---- PETUGAS HELPER ----
+// Generate HTML select petugas dari cache
+function petugasSelect(elId, selected = '') {
+  const list = DB.get('petugas').filter(p => p.status === 'aktif');
+  const opts = list.map(p =>
+    `<option value="${p.nama}" ${p.nama === selected ? 'selected' : ''}>${p.nama}</option>`
+  ).join('');
+  return `<select id="${elId}" class="fctrl">
+    <option value="">-- Pilih Petugas --</option>
+    ${opts}
+    <option value="__lain__">Lainnya (ketik manual)</option>
+  </select>
+  <input id="${elId}_manual" class="fctrl" style="display:none;margin-top:6px" placeholder="Nama petugas">`;
+}
+
+// Pasang listener toggle manual input
+function initPetugasSelect(elId) {
+  const sel = document.getElementById(elId);
+  const manual = document.getElementById(elId + '_manual');
+  if (!sel || !manual) return;
+  sel.addEventListener('change', () => {
+    if (sel.value === '__lain__') {
+      manual.style.display = 'block';
+      manual.focus();
+    } else {
+      manual.style.display = 'none';
+    }
+  });
+  // Kalau nilai awal tidak ada di list, tampilkan manual
+  if (sel.value === '' && manual.dataset.init) {
+    sel.value = '__lain__';
+    manual.style.display = 'block';
+  }
+}
+
+// Ambil nilai petugas (dari select atau manual)
+function getPetugas(elId) {
+  const sel = document.getElementById(elId);
+  if (!sel) return '';
+  if (sel.value === '__lain__') {
+    return document.getElementById(elId + '_manual')?.value.trim() || '';
+  }
+  return sel.value;
+}

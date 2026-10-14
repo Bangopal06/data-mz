@@ -120,7 +120,7 @@ window.openModalKotak = function(id=null) {
           <div class="fg"><label class="flabel">Frekuensi Pengambilan</label>
             <select id="kFrekuensi" class="fctrl">${['mingguan','dua_mingguan','bulanan'].map(f=>`<option value="${f}" ${k?.frekuensi===f?'selected':''}>${f}</option>`).join('')}</select>
           </div>
-          <div class="fg"><label class="flabel">Petugas</label><input id="kPetugas" class="fctrl" value="${k?.petugas||''}"></div>
+          <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('kPetugas', k?.petugas||'')}</div>
           <div class="fg"><label class="flabel">Nominal Terakhir (Rp)</label><input type="number" id="kNominal" class="fctrl" value="${k?.nominal_terakhir||''}"></div>
           <div class="fg"><label class="flabel">Tgl Pengambilan Terakhir</label><input type="date" id="kTglAmbil" class="fctrl" value="${tglInput(k?.tgl_ambil)||''}"></div>
           <div class="fg"><label class="flabel">Status</label>
@@ -136,6 +136,7 @@ window.openModalKotak = function(id=null) {
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  initPetugasSelect('kPetugas');
 };
 
 window.updateNamaKotak = function() {
@@ -160,7 +161,7 @@ window.saveKotak = async function(id) {
     kecamatan: document.getElementById('kKecamatan').value.trim(),
     kota: document.getElementById('kKota').value.trim(),
     frekuensi: document.getElementById('kFrekuensi').value,
-    petugas: document.getElementById('kPetugas').value.trim(),
+    petugas: getPetugas('kPetugas'),
     nominal_terakhir: +document.getElementById('kNominal').value||0,
     tgl_ambil: document.getElementById('kTglAmbil').value||null,
     status: document.getElementById('kStatus').value,
@@ -192,7 +193,7 @@ window.openModalAmbil = function(kotakId=null) {
         <div class="fgrid">
           <div class="fg"><label class="flabel">Tanggal Ambil *</label><input type="date" id="aTgl" class="fctrl" value="${new Date().toISOString().split('T')[0]}"></div>
           <div class="fg"><label class="flabel">Nominal (Rp) *</label><input type="number" id="aNominal" class="fctrl" placeholder="250000"></div>
-          <div class="fg"><label class="flabel">Petugas</label><input id="aPetugas" class="fctrl" placeholder="Nama petugas"></div>
+          <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('aPetugas', '')}</div>
           <div class="fg"><label class="flabel">Catatan</label><input id="aCatatan" class="fctrl" placeholder="Opsional"></div>
         </div>
       </div>
@@ -203,6 +204,7 @@ window.openModalAmbil = function(kotakId=null) {
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  initPetugasSelect('aPetugas');
 };
 
 window.saveAmbil = async function() {
@@ -214,7 +216,7 @@ window.saveAmbil = async function() {
   const ok = await confirmSave(`Catat pengambilan <strong>${rupiah(nominal)}</strong> dari <strong>${kotak?.nama_kotak}</strong>?`);
   if (!ok) return;
   await DB.update('kotak_infaq', kotakId, { nominal_terakhir: nominal, tgl_ambil: tglAmbil });
-  const r = await DB.insert('pengambilan_kotak', { kotak_id:kotakId, nama_kotak:kotak?.nama_kotak, nama_toko:kotak?.nama_toko, tgl_ambil:tglAmbil, nominal, petugas:document.getElementById('aPetugas').value.trim(), catatan:document.getElementById('aCatatan').value.trim() });
+  const r = await DB.insert('pengambilan_kotak', { kotak_id:kotakId, nama_kotak:kotak?.nama_kotak, nama_toko:kotak?.nama_toko, tgl_ambil:tglAmbil, nominal, petugas:getPetugas('aPetugas'), catatan:document.getElementById('aCatatan').value.trim() });
   if(!r){toast('Gagal','err');return;}
   await Promise.all([DB.sync('kotak_infaq'),DB.sync('pengambilan_kotak')]);
   toast('Pengambilan berhasil dicatat','ok');
@@ -385,7 +387,7 @@ window.openModalProsKotak = function(id=null) {
           <div class="fg"><label class="flabel">Status</label>
             <select id="pkStatus" class="fctrl">${['baru','dihubungi','survei'].map(s=>`<option value="${s}" ${d?.status===s?'selected':''}>${s}</option>`).join('')}</select>
           </div>
-          <div class="fg"><label class="flabel">Petugas</label><input id="pkPetugas" class="fctrl" value="${d?.petugas||''}"></div>
+          <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('pkPetugas', d?.petugas||'')}</div>
           <div class="fg fcol2"><label class="flabel">Catatan</label><textarea id="pkCatatan" class="fctrl">${d?.catatan||''}</textarea></div>
         </div>
       </div>
@@ -396,6 +398,7 @@ window.openModalProsKotak = function(id=null) {
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  initPetugasSelect('pkPetugas');
 };
 
 window.saveProsKotak = async function(id) {

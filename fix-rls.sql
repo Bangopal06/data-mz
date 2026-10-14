@@ -32,3 +32,17 @@ GRANT ALL ON pengambilan_kotak TO anon;
 GRANT ALL ON kcs_data TO anon;
 GRANT ALL ON kcs_prospek TO anon;
 GRANT ALL ON kcs_pengambilan TO anon;
+
+-- =============================================
+-- PETUGAS TABLE (jalankan jika belum ada)
+-- =============================================
+CREATE TABLE IF NOT EXISTS petugas (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nama TEXT NOT NULL,
+  jabatan TEXT,
+  status TEXT DEFAULT 'aktif',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE petugas DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON petugas TO anon;

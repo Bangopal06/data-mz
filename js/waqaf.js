@@ -237,7 +237,7 @@ window.openModalDonWQ = function(id=null, programId=null) {
           <div class="fg"><label class="flabel">No. HP</label><input id="dwHP" class="fctrl" value="${d?.hp||''}"></div>
           <div class="fg fcol2"><label class="flabel">Alamat</label><input id="dwAlamat" class="fctrl" value="${d?.alamat||''}"></div>
           <div class="fg"><label class="flabel">Kota</label><input id="dwKota" class="fctrl" value="${d?.kota||''}"></div>
-          <div class="fg"><label class="flabel">Petugas</label><input id="dwPetugas" class="fctrl" value="${d?.petugas||''}"></div>
+          <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('dwPetugas', d?.petugas||'')}</div>
           <div class="fg fcol2"><label class="flabel">Program Waqaf *</label>
             <select id="dwProgram" class="fctrl"><option value="">-- Pilih Program --</option>${progOpts}</select>
           </div>
@@ -259,6 +259,7 @@ window.openModalDonWQ = function(id=null, programId=null) {
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  initPetugasSelect('dwPetugas');
 };
 
 window.saveDonWQ = async function(id) {
@@ -274,7 +275,7 @@ window.saveDonWQ = async function(id) {
     nama, hp: document.getElementById('dwHP').value.trim(),
     alamat: document.getElementById('dwAlamat').value.trim(),
     kota: document.getElementById('dwKota').value.trim(),
-    petugas: document.getElementById('dwPetugas').value.trim(),
+    petugas: getPetugas('dwPetugas'),
     program_id: programId, nominal,
     tgl_donasi: document.getElementById('dwTgl').value,
     metode: document.getElementById('dwMetode').value,
@@ -360,7 +361,7 @@ window.openModalProsWQ = function(id=null) {
           <div class="fg"><label class="flabel">Status</label>
             <select id="pwStatus" class="fctrl">${['baru','dihubungi','survei'].map(s=>`<option value="${s}" ${d?.status===s?'selected':''}>${s}</option>`).join('')}</select>
           </div>
-          <div class="fg"><label class="flabel">Petugas</label><input id="pwPetugas" class="fctrl" value="${d?.petugas||''}"></div>
+          <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('pwPetugas', d?.petugas||'')}</div>
           <div class="fg fcol2"><label class="flabel">Catatan</label><textarea id="pwCatatan" class="fctrl">${d?.catatan||''}</textarea></div>
         </div>
       </div>
@@ -371,6 +372,7 @@ window.openModalProsWQ = function(id=null) {
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  initPetugasSelect('pwPetugas');
 };
 
 window.saveProsWQ = async function(id) {
@@ -382,7 +384,7 @@ window.saveProsWQ = async function(id) {
     program_id: document.getElementById('pwProgram').value||null,
     nominal_potensi: +document.getElementById('pwPotensi').value||0,
     status: document.getElementById('pwStatus').value,
-    petugas: document.getElementById('pwPetugas').value.trim(),
+    petugas: getPetugas('pwPetugas'),
     catatan: document.getElementById('pwCatatan').value.trim()
   };
   const r = id ? await DB.update('prospek_waqaf', id, payload) : await DB.insert('prospek_waqaf', payload);

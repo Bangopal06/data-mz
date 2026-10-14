@@ -129,7 +129,7 @@ window.openModalKcs = function(id=null) {
           <div class="fg"><label class="flabel">Frekuensi Pengambilan</label>
             <select id="kcFrekuensi" class="fctrl">${['mingguan','dua_mingguan','bulanan'].map(f=>`<option value="${f}" ${k?.frekuensi===f?'selected':''}>${f}</option>`).join('')}</select>
           </div>
-          <div class="fg"><label class="flabel">Petugas</label><input id="kcPetugas" class="fctrl" value="${k?.petugas||''}"></div>
+          <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('kcPetugas', k?.petugas||'')}</div>
           <div class="fg"><label class="flabel">Nominal Terakhir (Rp)</label><input type="number" id="kcNominal" class="fctrl" value="${k?.nominal_terakhir||''}"></div>
           <div class="fg"><label class="flabel">Tgl Pengambilan Terakhir</label><input type="date" id="kcTglAmbil" class="fctrl" value="${tglInput(k?.tgl_ambil)||''}"></div>
           <div class="fg"><label class="flabel">Status</label>
@@ -144,6 +144,7 @@ window.openModalKcs = function(id=null) {
       </div>
     </div>
   </div>`);
+  initPetugasSelect('kcPetugas');
 };
 
 window.autoNamaKcs = function() {
@@ -166,7 +167,7 @@ window.saveKcs = async function(id) {
     kecamatan:document.getElementById('kcKecamatan').value.trim(),
     kota:document.getElementById('kcKota').value.trim(),
     frekuensi:document.getElementById('kcFrekuensi').value,
-    petugas:document.getElementById('kcPetugas').value.trim(),
+    petugas: getPetugas('kcPetugas'),
     nominal_terakhir:+document.getElementById('kcNominal').value||0,
     tgl_ambil:document.getElementById('kcTglAmbil').value||null,
     status:document.getElementById('kcStatus').value,
@@ -199,7 +200,7 @@ window.openModalKcsAmbil = function(kcsId=null) {
         <div class="fgrid">
           <div class="fg"><label class="flabel">Tanggal Ambil *</label><input type="date" id="kaTgl" class="fctrl" value="${new Date().toISOString().split('T')[0]}"></div>
           <div class="fg"><label class="flabel">Nominal (Rp) *</label><input type="number" id="kaNominal" class="fctrl" placeholder="250000"></div>
-          <div class="fg"><label class="flabel">Petugas</label><input id="kaPetugas" class="fctrl"></div>
+          <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('kaPetugas', '')}</div>
           <div class="fg"><label class="flabel">Catatan</label><input id="kaCatatan" class="fctrl" placeholder="Opsional"></div>
         </div>
       </div>
@@ -209,6 +210,7 @@ window.openModalKcsAmbil = function(kcsId=null) {
       </div>
     </div>
   </div>`);
+  initPetugasSelect('kaPetugas');
 };
 
 window.saveKcsAmbil = async function() {
@@ -227,7 +229,7 @@ window.saveKcsAmbil = async function() {
   // Simpan riwayat
   const ambil = DB.get('kcs_pengambilan');
   ambil.unshift({ kcs_id:kcsId, nama_kotak:kcs?.nama_kotak, nama_toko:kcs?.nama_toko,
-    tgl_ambil:tglAmbil, nominal, petugas:document.getElementById('kaPetugas').value.trim(),
+    tgl_ambil:tglAmbil, nominal, petugas:getPetugas('kaPetugas'),
     catatan:document.getElementById('kaCatatan').value.trim() });
   DB.set('kcs_pengambilan',ambil);
   toast('Pengambilan dicatat','ok');
@@ -379,7 +381,7 @@ window.openModalKcsProspek = function(id=null) {
           <div class="fg"><label class="flabel">Status</label>
             <select id="kpStatus" class="fctrl">${['baru','dihubungi','survei'].map(s=>`<option value="${s}" ${d?.status===s?'selected':''}>${s}</option>`).join('')}</select>
           </div>
-          <div class="fg"><label class="flabel">Petugas</label><input id="kpPetugas" class="fctrl" value="${d?.petugas||''}"></div>
+          <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('kpPetugas', d?.petugas||'')}</div>
           <div class="fg fcol2"><label class="flabel">Catatan</label><textarea id="kpCatatan" class="fctrl">${d?.catatan||''}</textarea></div>
         </div>
       </div>
@@ -389,6 +391,7 @@ window.openModalKcsProspek = function(id=null) {
       </div>
     </div>
   </div>`);
+  initPetugasSelect('kpPetugas');
 };
 
 window.saveKcsProspek = async function(id) {
@@ -400,7 +403,7 @@ window.saveKcsProspek = async function(id) {
   const payload = { id:id||uid(), nama_toko:nama, pemilik:document.getElementById('kpPemilik').value.trim(),
     hp:document.getElementById('kpHP').value.trim(), kota:document.getElementById('kpKota').value.trim(),
     kecamatan:document.getElementById('kpKecamatan').value.trim(), alamat:document.getElementById('kpAlamat').value.trim(),
-    status:document.getElementById('kpStatus').value, petugas:document.getElementById('kpPetugas').value.trim(),
+    status:document.getElementById('kpStatus').value, petugas:getPetugas('kpPetugas'),
     catatan:document.getElementById('kpCatatan').value.trim(),
     created_at:id?(data.find(x=>x.id===id)?.created_at||new Date().toISOString()):new Date().toISOString()
   };
