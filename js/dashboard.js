@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', async () => {
+﻿document.addEventListener('DOMContentLoaded', async () => {
   // Render dulu dari cache (langsung terasa cepat)
   try { renderDashboard(); } catch(e) {}
 
@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div style="text-align:center;padding:48px;color:var(--gray-400)">
         <div style="font-size:32px;margin-bottom:12px">📋</div>
         <div style="font-size:15px;font-weight:600;color:var(--gray-600);margin-bottom:8px">Belum ada data</div>
-        <div style="font-size:13px">Mulai dengan menambah data di menu Donatur Rutin, Kotak Infaq, atau KCS</div>
+        <div style="font-size:13px">Mulai dengan menambah data di menu Donatur Rutin, Kotak Infaq, atau SCS</div>
       </div>`;
   }
 });
@@ -105,7 +105,7 @@ function renderDashboard() {
       <div class="stat" style="cursor:pointer" onclick="location='waqaf.html'">
         <div class="stat-ico ic-purple">🕌</div>
         <div class="stat-body">
-          <div class="lbl">Program Waqaf</div>
+          <div class="lbl">Isidental</div>
           <div class="val">${wp.length}</div>
           <div class="sub rupiah">${rupiah(totalWaqaf)} terkumpul · ${dw.length} donatur</div>
         </div>
@@ -138,7 +138,7 @@ function renderDashboard() {
       <!-- Kotak Infaq & KCS -->
       <div class="card">
         <div class="card-head">
-          <div class="card-title">🗃️ Kotak Infaq & KCS</div>
+          <div class="card-title">🗃️ Kotak Infaq & SCS</div>
           <a href="kotak-infaq.html" class="btn btn-ghost btn-sm" style="font-size:11px">Lihat →</a>
         </div>
         <div class="tbl-wrap">
@@ -146,10 +146,10 @@ function renderDashboard() {
             <thead><tr><th>Toko</th><th>Tipe</th><th>Terakhir</th></tr></thead>
             <tbody>
               ${[...ki.filter(k=>k.status==='aktif').slice(0,3).map(k=>({...k,tipe:'KI'})),
-                 ...kcs.filter(k=>k.status==='aktif').slice(0,2).map(k=>({...k,tipe:'KCS'}))]
+                 ...kcs.filter(k=>k.status==='aktif').slice(0,2).map(k=>({...k,tipe:'SCS'}))]
                 .map(k=>`<tr>
                   <td style="font-size:12px;font-weight:600;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${k.nama_toko}</td>
-                  <td><span class="badge ${k.tipe==='KCS'?'b-blue':'b-orange'}" style="font-size:10px">${k.tipe}</span></td>
+                  <td><span class="badge ${k.tipe==='SCS'?'b-blue':'b-orange'}" style="font-size:10px">${k.tipe}</span></td>
                   <td class="rupiah" style="font-size:11px;color:#f97316">${rupiah(k.nominal_terakhir)}</td>
                 </tr>`).join('') || '<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--gray-400);font-size:12px">Belum ada data</td></tr>'}
             </tbody>
@@ -157,10 +157,10 @@ function renderDashboard() {
         </div>
       </div>
 
-      <!-- Program Waqaf -->
+      <!-- Isidental -->
       <div class="card">
         <div class="card-head">
-          <div class="card-title">🕌 Program Waqaf</div>
+          <div class="card-title">🕌 Isidental</div>
           <a href="waqaf.html" class="btn btn-ghost btn-sm" style="font-size:11px">Lihat →</a>
         </div>
         ${wp.length ? wp.slice(0,3).map(w=>{
@@ -174,7 +174,7 @@ function renderDashboard() {
               <span class="rupiah">${rupiah(w.terkumpul)}</span><span>${pct}% dari ${rupiah(w.target)}</span>
             </div>
           </div>`;
-        }).join('') : '<div style="text-align:center;padding:24px;color:var(--gray-400);font-size:12px">Belum ada program waqaf</div>'}
+        }).join('') : '<div style="text-align:center;padding:24px;color:var(--gray-400);font-size:12px">Belum ada Isidental</div>'}
       </div>
 
     </div>

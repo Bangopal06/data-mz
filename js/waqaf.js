@@ -76,7 +76,7 @@ function progressBar(terkumpul, target) {
   </div>`;
 }
 
-// ============ PROGRAM WAQAF ============
+// ============ Isidental ============
 function loadProgram() {
   let data = DB.get('waqaf_program');
   const sr = document.getElementById('srProg').value.toLowerCase();
@@ -111,7 +111,7 @@ function loadProgram() {
         </div>
       </div>
     </div>`;
-  }).join('') : `<div class="empty" style="grid-column:1/-1"><div class="ei">🕌</div><div class="et">Belum ada program waqaf</div></div>`;
+  }).join('') : `<div class="empty" style="grid-column:1/-1"><div class="ei">🕌</div><div class="et">Belum ada Isidental</div></div>`;
   renderPagination('pagProg', total, pgProg, PS, 'goPgProg');
 }
 window.goPgProg = p => { pgProg=p; loadProgram(); };
@@ -120,11 +120,11 @@ window.openModalProgram = function(id=null) {
   const w = id ? DB.get('waqaf_program').find(x=>x.id===id) : null;
   const html = `<div class="overlay" id="ovProgram">
     <div class="modal modal-lg">
-      <div class="modal-head"><h3>${w?'Edit':'Tambah'} Program Waqaf</h3><button class="modal-close" onclick="closeModal('ovProgram')">✕</button></div>
+      <div class="modal-head"><h3>${w?'Edit':'Tambah'} Isidental</h3><button class="modal-close" onclick="closeModal('ovProgram')">✕</button></div>
       <div class="modal-body">
         <div class="sec-div">Informasi Program</div>
         <div class="fgrid">
-          <div class="fg fcol2"><label class="flabel">Nama Program *</label><input id="wpNama" class="fctrl" value="${w?.nama||''}" placeholder="Nama program waqaf"></div>
+          <div class="fg fcol2"><label class="flabel">Nama Program *</label><input id="wpNama" class="fctrl" value="${w?.nama||''}" placeholder="Nama Isidental"></div>
           <div class="fg fcol2"><label class="flabel">Deskripsi</label><textarea id="wpDesc" class="fctrl">${w?.deskripsi||''}</textarea></div>
           <div class="fg"><label class="flabel">Kategori</label>
             <select id="wpKat" class="fctrl">${['masjid','pendidikan','kesehatan','sosial'].map(k=>`<option value="${k}" ${w?.kategori===k?'selected':''}>${k}</option>`).join('')}</select>
@@ -157,7 +157,7 @@ window.saveProgram = async function(id) {
   const nama = document.getElementById('wpNama').value.trim();
   const target = +document.getElementById('wpTarget').value;
   if (!nama || !target) { toast('Nama dan target wajib diisi','warn'); return; }
-  const ok = await confirmSave(`Simpan program waqaf <strong>${nama}</strong>?`);
+  const ok = await confirmSave(`Simpan Isidental <strong>${nama}</strong>?`);
   if (!ok) return;
   // Disable tombol simpan supaya tidak bisa diklik dua kali
   const btnSimpan = document.querySelector('#ovProgram .btn-primary');
@@ -182,7 +182,7 @@ window.saveProgram = async function(id) {
 };
 
 window.hapusProgram = async function(id) {
-  if (!await confirmDel('Hapus program waqaf ini?')) return;
+  if (!await confirmDel('Hapus Isidental ini?')) return;
   if (!await DB.delete('waqaf_program', id)) { toast('Gagal menghapus','err'); return; }
   await DB.sync('waqaf_program', { force: true });
   toast('Dihapus','ok');
@@ -238,7 +238,7 @@ window.openModalDonWQ = function(id=null, programId=null) {
           <div class="fg fcol2"><label class="flabel">Alamat</label><input id="dwAlamat" class="fctrl" value="${d?.alamat||''}"></div>
           <div class="fg"><label class="flabel">Kota</label><input id="dwKota" class="fctrl" value="${d?.kota||''}"></div>
           <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('dwPetugas', d?.petugas||'')}</div>
-          <div class="fg fcol2"><label class="flabel">Program Waqaf *</label>
+          <div class="fg fcol2"><label class="flabel">Isidental *</label>
             <select id="dwProgram" class="fctrl"><option value="">-- Pilih Program --</option>${progOpts}</select>
           </div>
           <div class="fg"><label class="flabel">Nominal Donasi (Rp) *</label><input type="number" id="dwNominal" class="fctrl" value="${d?.nominal||''}"></div>

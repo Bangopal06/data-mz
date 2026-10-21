@@ -48,7 +48,7 @@ function loadKcsStats() {
 
   document.getElementById('kcsStats').innerHTML = `
     <div class="stat"><div class="stat-ico ic-blue">📦</div><div class="stat-body"><div class="lbl">KCS Aktif</div><div class="val">${data.filter(k=>k.status==='aktif').length}</div><div class="sub">${data.length} total</div></div></div>
-    <div class="stat"><div class="stat-ico ic-orange">👤</div><div class="stat-body"><div class="lbl">Prospek KCS</div><div class="val">${prospek.length}</div></div></div>
+    <div class="stat"><div class="stat-ico ic-orange">👤</div><div class="stat-body"><div class="lbl">Prospek SCS</div><div class="val">${prospek.length}</div></div></div>
     <div class="stat"><div class="stat-ico ic-green">💰</div><div class="stat-body"><div class="lbl">Infaq Terakhir</div><div class="val rupiah" style="font-size:15px">${rupiah(totalInfaq)}</div></div></div>
     <div class="stat"><div class="stat-ico ic-teal">📊</div><div class="stat-body"><div class="lbl">Total Terkumpul</div><div class="val rupiah" style="font-size:15px">${rupiah(totalAll)}</div></div></div>
   `;
@@ -100,7 +100,7 @@ function loadKcsData() {
         </div>
       </div>
     </div>`).join('')
-  : `<div class="empty" style="grid-column:1/-1"><div class="ei">📦</div><div class="et">Belum ada data KCS</div><div class="ed">Klik + Tambah untuk menambah</div></div>`;
+  : `<div class="empty" style="grid-column:1/-1"><div class="ei">📦</div><div class="et">Belum ada data SCS</div><div class="ed">Klik + Tambah untuk menambah</div></div>`;
 
   renderPagination('pagKcsData', total, pgKcsData, PS, 'goPgKcsData');
 }
@@ -150,7 +150,7 @@ window.openModalKcs = function(id=null) {
 window.autoNamaKcs = function() {
   const toko = document.getElementById('kcNamaToko')?.value.trim()||'';
   const el = document.getElementById('kcNamaKotak');
-  if (el && (!el.value || el.value.startsWith('KCS '))) el.value = toko ? `KCS ${toko}` : 'KCS';
+  if (el && (!el.value || el.value.startsWith('KCS '))) el.value = toko ? `KCS ${toko}` : 'SCS';
 };
 
 window.saveKcs = async function(id) {
@@ -360,7 +360,7 @@ function loadKcsProspek() {
       <button class="btn btn-ghost btn-sm btn-icon" onclick="openModalKcsProspek('${d.id}')">✏️</button>
       <button class="btn btn-ghost btn-sm btn-icon" onclick="hapusKcsProspek('${d.id}')">🗑️</button>
     </div></td></tr>`).join('')
-  : `<tr><td colspan="8"><div class="empty"><div class="ei">👤</div><div class="et">Belum ada prospek KCS</div></div></td></tr>`;
+  : `<tr><td colspan="8"><div class="empty"><div class="ei">👤</div><div class="et">Belum ada prospek SCS</div></div></td></tr>`;
   renderPagination('pagKcsProspek',total,pgKcsProspek,PS,'goPgKcsProspek');
 }
 window.goPgKcsProspek = p=>{pgKcsProspek=p;loadKcsProspek();};
@@ -442,7 +442,7 @@ function exportKCS() {
     frekuensi:k.frekuensi||'', petugas:k.petugas||'',
     nominal_terakhir:k.nominal_terakhir||0, tgl_ambil:k.tgl_ambil||'', status:k.status||''
   }));
-  exportExcel(data,'DataKCS','KCS');
+  exportExcel(data,'DataKCS','SCS');
 }
 
 window.triggerImportKCS = function() {
