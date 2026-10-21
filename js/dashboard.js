@@ -57,21 +57,30 @@ function renderDashboard() {
 
   document.getElementById('dashContent').innerHTML = `
 
-    <!-- TOTAL PENDAPATAN - highlight utama -->
-    <div style="background:linear-gradient(135deg,#1a56db,#6c2bd9);border-radius:14px;padding:24px 28px;margin-bottom:24px;color:white;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
-      <div>
-        <div style="font-size:13px;opacity:.8;margin-bottom:6px">💰 Total Pendapatan Keseluruhan</div>
-        <div style="font-size:32px;font-weight:900;letter-spacing:-1px">${rupiah(totalSemua)}</div>
-        <div style="font-size:12px;opacity:.7;margin-top:6px">Donatur Rutin + Kotak Infaq + KCS + Waqaf</div>
+    <!-- 2 KARTU TERPISAH: Bulan Ini & Keseluruhan -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+
+      <!-- Bulan Ini - transaksi nyata -->
+      <div style="background:linear-gradient(135deg,#1a56db,#6c2bd9);border-radius:14px;padding:24px 28px;color:white">
+        <div style="font-size:13px;opacity:.8;margin-bottom:6px">📅 Penerimaan Bulan Ini (${bulanLabel})</div>
+        <div style="font-size:32px;font-weight:900;letter-spacing:-1px;margin-bottom:12px">${rupiah(totalBulanIni)}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">💚 Donasi: ${rupiah(bayarBulanIni)}</span>
+          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">🗃️ Kotak: ${rupiah(ambilKIBulanIni)}</span>
+          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">📦 SCS: ${rupiah(ambilKCSBulanIni)}</span>
+          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">🕌 Isidental: ${rupiah(waqafBulanIni)}</span>
+        </div>
       </div>
-      <div style="text-align:right">
-        <div style="font-size:12px;opacity:.7;margin-bottom:4px">Bulan Ini (${bulanLabel})</div>
-        <div style="font-size:22px;font-weight:800">${rupiah(totalBulanIni)}</div>
-        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:flex-end">
-          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">Donasi: ${rupiah(bayarBulanIni)}</span>
-          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">Kotak: ${rupiah(ambilKIBulanIni)}</span>
-          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">KCS: ${rupiah(ambilKCSBulanIni)}</span>
-          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">Waqaf: ${rupiah(waqafBulanIni)}</span>
+
+      <!-- Total Keseluruhan - akumulasi semua waktu -->
+      <div style="background:linear-gradient(135deg,#065f46,#0f766e);border-radius:14px;padding:24px 28px;color:white">
+        <div style="font-size:13px;opacity:.8;margin-bottom:6px">💰 Total Akumulasi Keseluruhan</div>
+        <div style="font-size:32px;font-weight:900;letter-spacing:-1px;margin-bottom:12px">${rupiah(totalSemua)}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">💚 Rutin: ${rupiah(totalDonasi)}/bln</span>
+          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">🗃️ Kotak: ${rupiah(totalKI)}</span>
+          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">📦 SCS: ${rupiah(totalKCS)}</span>
+          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">🕌 Isidental: ${rupiah(totalWaqaf)}</span>
         </div>
       </div>
     </div>
