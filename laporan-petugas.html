@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laporan Petugas - Mitra Zakat Kebumen</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .period-bar{background:white;border-radius:10px;border:1px solid var(--gray-200);padding:14px 20px;margin-bottom:20px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+    .period-bar .fg{min-width:130px;flex:1}
+    .section-title{font-size:14px;font-weight:700;color:var(--gray-700);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+    .status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .dot-green{background:var(--success)}.dot-blue{background:var(--primary)}.dot-orange{background:#f97316}.dot-purple{background:#8b5cf6}
+    tfoot tr td{font-weight:700;background:var(--gray-50)}
+    .pbar-wrap{height:8px;background:var(--gray-200);border-radius:99px;overflow:hidden;min-width:80px}
+    .pbar-fill{height:100%;border-radius:99px;transition:width .4s}
+    @media print{.no-print{display:none}}
+  </style>
+</head>
+<body>
+<div id="sbOverlay" class="sidebar-overlay"></div>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><div class="brand-icon"><img src="gambar/logo.png" style="width:40px;height:40px;object-fit:contain;border-radius:8px"></div><h2>Mitra Zakat Kebumen</h2><p>Panel Admin</p></div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Menu Utama</div>
+      <a href="index.html" class="nav-item"><span class="icon">🏠</span> Dashboard</a>
+      <div class="nav-label">Donatur Rutin</div>
+      <a href="donatur-rutin.html" class="nav-item"><span class="icon">💚</span> Donatur Rutin</a>
+      <div class="nav-label">Kotak Infaq</div>
+      <a href="kotak-infaq.html" class="nav-item"><span class="icon">🗃️</span> Kotak Infaq</a>
+      <a href="kcs.html" class="nav-item"><span class="icon">📦</span> SCS</a>
+      <div class="nav-label">Isidental</div>
+      <a href="waqaf.html" class="nav-item"><span class="icon">🕌</span> Isidental</a>
+      <div class="nav-label">Laporan</div>
+      <a href="laporan-donatur.html" class="nav-item"><span class="icon">💚</span> Lap. Donatur Rutin</a>
+      <a href="laporan-kotak.html" class="nav-item"><span class="icon">🗃️</span> Lap. Kotak Infaq</a>
+      <a href="laporan-kcs.html" class="nav-item"><span class="icon">📦</span> Lap. SCS</a>
+      <a href="laporan-waqaf.html" class="nav-item"><span class="icon">🕌</span> Lap. Isidental</a>
+      <a href="laporan-petugas.html" class="nav-item active"><span class="icon">👷</span> Lap. Petugas</a>
+      <div class="nav-label">Pengaturan</div>
+      <a href="petugas.html" class="nav-item"><span class="icon">👷</span> Petugas</a>
+      <div class="nav-label">Import/Export</div>
+      <a href="import.html" class="nav-item"><span class="icon">📥</span> Import Data</a>
+    </nav>
+    <div class="sidebar-footer"><div class="avatar">A</div><div class="user-info"><div class="user-name">Administrator</div><div class="user-role">Super Admin</div></div></div>
+  </aside>
+
+  <div class="main">
+    <header class="header">
+      <button class="header-menu" id="menuBtn">☰</button>
+      <div class="header-title">👷 Laporan Petugas</div>
+      <div class="header-right">
+        <span class="header-date" id="headerDate"></span>
+        <button class="btn btn-outline btn-sm no-print" onclick="exportLaporanPetugas()">⬇️ Export Excel</button>
+        <button class="btn btn-primary btn-sm no-print" onclick="window.print()">🖨️ Print</button>
+      </div>
+    </header>
+
+    <div class="page">
+      <!-- FILTER -->
+      <div class="period-bar no-print">
+        <div class="fg">
+          <label class="flabel">Bulan</label>
+          <select id="flBulan" class="fctrl" onchange="renderPetugas()">
+            <option value="">Semua Bulan</option>
+            <option value="01">Januari</option><option value="02">Februari</option>
+            <option value="03">Maret</option><option value="04">April</option>
+            <option value="05">Mei</option><option value="06">Juni</option>
+            <option value="07">Juli</option><option value="08">Agustus</option>
+            <option value="09">September</option><option value="10">Oktober</option>
+            <option value="11">November</option><option value="12">Desember</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="flabel">Tahun</label>
+          <select id="flTahun" class="fctrl" onchange="renderPetugas()"></select>
+        </div>
+        <div class="fg">
+          <label class="flabel">Petugas</label>
+          <select id="flPetugas" class="fctrl" onchange="renderPetugas()"><option value="">Semua Petugas</option></select>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div class="stats" id="statsPetugas" style="margin-bottom:20px"></div>
+
+      <!-- REKAP PER PETUGAS -->
+      <div style="margin-bottom:24px">
+        <div class="section-title"><div class="status-dot dot-blue"></div>👷 Rekap Pendapatan Per Petugas</div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Nama Petugas</th><th>Donatur Rutin</th><th>Kotak Infaq</th><th>SCS</th><th>Isidental</th><th>Total</th><th>Transaksi</th></tr></thead>
+              <tbody id="tblRekapPetugas"></tbody>
+              <tfoot id="footRekapPetugas"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- DETAIL AKTIVITAS -->
+      <div>
+        <div class="section-title"><div class="status-dot dot-green"></div>📋 Detail Aktivitas Petugas</div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Petugas</th><th>Jenis</th><th>Nama/Toko</th><th>Nominal</th><th>Tanggal</th><th>Keterangan</th></tr></thead>
+              <tbody id="tblDetailPetugas"></tbody>
+              <tfoot id="footDetailPetugas"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast-wrap"></div>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+<script src="js/laporan-petugas.js"></script>
+</body>
+</html>
