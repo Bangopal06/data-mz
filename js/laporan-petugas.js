@@ -8,7 +8,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     DB.sync('pengambilan_kotak'),
     DB.sync('kcs_pengambilan'),
     DB.sync('donatur_waqaf'),
-    DB.sync('waqaf_program')
+    DB.sync('waqaf_program'),
+    DB.sync('prospek_kotak'),
+    DB.sync('kcs_prospek'),
+    DB.sync('prospek_rutin')
   ]);
   initFilter();
   renderPetugas();
@@ -168,6 +171,50 @@ window.renderPetugas = function() {
       <td class="rupiah" style="padding:10px 14px">${rupiah(totalDetail)}</td>
       <td colspan="2"></td>
     </tr>` : '';
+
+  // PROSPEK PER PETUGAS
+  const allProspekKotak = DB.get('prospek_kotak');
+  const allProspekSCS = DB.get('kcs_prospek');
+  const allProspekRutin = DB.get('prospek_rutin');
+
+  // Gabung semua prospek
+  const allProspek = [
+    ...allProspekKotak.map(p=>({...p, jenis:'Kotak Infaq'})),
+    ...allProspekSCS.map(p=>({...p, jenis:'SCS'})),
+    ...allProspekRutin.map(p=>({...p, jenis:'Donatur Rutin'}))
+  ].filter(p => p.petugas && (!filterPt || p.petugas === filterPt));
+
+  // Rekap prospek per petugas
+  const prospekMap = {};
+  allProspek.forEach(p => {
+    if (!prospekMap[p.petugas]) prospekMap[p.petugas] = { nama:p.petugas, baru:0, dihubungi:0, survei:0, total:0 };
+    prospekMap[p.petugas][p.status] = (prospekMap[p.petugas][p.status]||0) + 1;
+    prospekMap[p.petugas].total++;
+  });
+  const rekapProspek = Object.values(prospekMap).sort((a,b) => b.total - a.total);
+
+  document.getElementById('tblProspekPetugas').innerHTML = rekapProspek.length ? rekapProspek.map((r,i) => `
+    <tr>
+      <td style="text-align:center;font-weight:700;color:var(--gray-400)">${i+1}</td>
+      <td style="font-weight:600">${r.nama}</td>
+      <td style="text-align:center">${r.baru||'—'}</td>
+      <td style="text-align:center">${r.dihubungi||'—'}</td>
+      <td style="text-align:center">${r.survei||'—'}</td>
+      <td style="text-align:center;font-weight:700">${r.total}</td>
+    </tr>`).join('')
+  : `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--gray-400)">Tidak ada data prospek</td></tr>`;
+
+  // Detail prospek
+  document.getElementById('tblDetailProspek').innerHTML = allProspek.length ? allProspek.map(p => `
+    <tr>
+      <td style="font-weight:600">${p.petugas}</td>
+      <td><span class="badge ${ p.jenis==='Kotak Infaq'?'b-orange':p.jenis==='SCS'?'b-blue':'b-green'}" style="font-size:10px">${p.jenis}</span></td>
+      <td style="font-size:12px">${p.nama_toko||p.nama||'-'}</td>
+      <td style="font-size:12px">${p.kota||'-'}</td>
+      <td>${badge(p.status)}</td>
+      <td style="font-size:12px;color:var(--gray-500);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.catatan||'-'}</td>
+    </tr>`).join('')
+  : `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--gray-400)">Tidak ada data prospek</td></tr>`;
 };
 
 window.exportLaporanPetugas = function() {

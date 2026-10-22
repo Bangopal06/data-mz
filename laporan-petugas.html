@@ -100,7 +100,7 @@
       </div>
 
       <!-- DETAIL AKTIVITAS -->
-      <div>
+      <div style="margin-bottom:24px">
         <div class="section-title"><div class="status-dot dot-green"></div>📋 Detail Aktivitas Petugas</div>
         <div class="card">
           <div class="tbl-wrap">
@@ -108,6 +108,32 @@
               <thead><tr><th>Petugas</th><th>Jenis</th><th>Nama/Toko</th><th>Nominal</th><th>Tanggal</th><th>Keterangan</th></tr></thead>
               <tbody id="tblDetailPetugas"></tbody>
               <tfoot id="footDetailPetugas"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- REKAP PROSPEK PER PETUGAS -->
+      <div style="margin-bottom:24px">
+        <div class="section-title"><div class="status-dot dot-orange"></div>🔍 Rekap Pengembangan (Prospek) Per Petugas</div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Petugas</th><th>Baru</th><th>Dihubungi</th><th>Survei</th><th>Total</th></tr></thead>
+              <tbody id="tblProspekPetugas"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- DETAIL PROSPEK -->
+      <div>
+        <div class="section-title"><div class="status-dot dot-purple"></div>📝 Detail Calon Lokasi / Donatur Baru</div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Petugas</th><th>Jenis</th><th>Nama/Toko</th><th>Kota</th><th>Status</th><th>Catatan</th></tr></thead>
+              <tbody id="tblDetailProspek"></tbody>
             </table>
           </div>
         </div>
