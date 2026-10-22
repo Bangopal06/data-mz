@@ -216,3 +216,132 @@ function exportDir() {
   if (!data.length) { toast('Tidak ada data','warn'); return; }
   exportExcel(data, 'DirektoriData', 'Direktori');
 }
+
+function importDir() {
+  document.body.insertAdjacentHTML('beforeend', `<div class="overlay" id="ovImportDir">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-head"><h3>⬆️ Import Direktori Data</h3><button class="modal-close" onclick="closeModal('ovImportDir')">✕</button></div>
+      <div class="modal-body">
+        <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:14px;margin-bottom:16px;font-size:12px;color:var(--gray-600)">
+          <strong>Format kolom Excel/CSV:</strong><br>
+          <code>nama, kategori, hp, kota, alamat, keterangan, status</code><br><br>
+          <button class="btn btn-outline btn-sm" onclick="downloadTemplateDir()">⬇️ Download Template</button>
+        </div>
+        <div class="fg">
+          <label class="flabel">Pilih File Excel / CSV</label>
+          <input type="file" id="fileDir" class="fctrl" accept=".xlsx,.xls,.csv">
+        </div>
+        <div id="importDirResult" style="margin-top:12px"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-outline" onclick="closeModal('ovImportDir')">Tutup</button>
+        <button class="btn btn-primary" onclick="prosesImportDir()">Import</button>
+      </div>
+    </div>
+  </div>`);
+}
+
+window.downloadTemplateDir = function() {
+  const headers = ['nama','kategori','hp','kota','alamat','keterangan','status'];
+  const contoh = [
+    ['Ahmad Fauzi','Wali Murid','081234567890','Kebumen','Jl. Merdeka No.1','Wali dari Kelas 5A','aktif'],
+    ['Bu Siti','Donatur Isidental','082345678901','Gombong','','Donasi rutin tiap bulan Ramadan','aktif']
+  ];
+  if (typeof XLSX !== 'undefined') {
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...contoh]);
+    ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length, 15) }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Template');
+    XLSX.writeFile(wb, 'Template_Direktori.xlsx');
+  } else {
+    const csv = [headers, ...contoh].map(r => r.map(c=>`"${c}"`).join(',')).join('\r\n');
+    const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'Template_Direktori.csv'; a.click();
+  }
+  toast('Template didownload','ok');
+};
+
+window.prosesImportDir = async function() {
+  const file = document.getElementById('fileDir').files[0];
+  if (!file) { toast('Pilih file dulu','warn'); return; }
+
+  const btn = document.querySelector('#ovImportDir .btn-primary');
+  btn.disabled = true; btn.textContent = 'Memproses...';
+
+  const readFile = () => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    if (file.name.endsWith('.csv')) reader.readAsText(file, 'UTF-8');
+    else reader.readAsArrayBuffer(file);
+  });
+
+  let rows = [];
+  try {
+    const result = await readFile();
+    if (file.name.endsWith('.csv')) {
+      const lines = result.split('\n').filter(l=>l.trim());
+      const headers = lines[0].split(',').map(h=>h.replace(/"/g,'').trim().toLowerCase());
+      rows = lines.slice(1).map(line => {
+        const vals = line.split(',').map(v=>v.replace(/"/g,'').trim());
+        const obj = {};
+        headers.forEach((h,i) => obj[h] = vals[i]||'');
+        return obj;
+      });
+    } else {
+      const wb = XLSX.read(result, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      rows = rows.map(r => {
+        const obj = {};
+        Object.keys(r).forEach(k => obj[k.toLowerCase().trim()] = String(r[k]||'').trim());
+        return obj;
+      });
+    }
+  } catch(e) {
+    toast('Gagal membaca file: '+e.message, 'err');
+    btn.disabled = false; btn.textContent = 'Import';
+    return;
+  }
+
+  let sukses = 0, skip = 0, error = 0;
+  const details = [];
+  const existing = DB.get('direktori');
+
+  for (const row of rows) {
+    const nama = (row.nama||'').trim();
+    if (!nama) { skip++; details.push({ok:false, msg:`Dilewati: nama kosong`}); continue; }
+    const payload = {
+      nama,
+      kategori: row.kategori||'Lainnya',
+      hp: row.hp||'',
+      kota: row.kota||'',
+      alamat: row.alamat||'',
+      keterangan: row.keterangan||'',
+      status: row.status||'aktif',
+      extra: {}
+    };
+    const r = await DB.insert('direktori', payload);
+    if (r) { sukses++; details.push({ok:true, msg:`✓ ${nama}`}); }
+    else { error++; details.push({ok:false, msg:`Gagal: ${nama}`}); }
+  }
+
+  await DB.sync('direktori', { force: true });
+
+  const resultEl = document.getElementById('importDirResult');
+  resultEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+      <div class="stat"><div class="stat-ico ic-green">✅</div><div class="stat-body"><div class="lbl">Ditambahkan</div><div class="val">${sukses}</div></div></div>
+      <div class="stat"><div class="stat-ico ic-yellow">⏭️</div><div class="stat-body"><div class="lbl">Dilewati</div><div class="val">${skip}</div></div></div>
+      <div class="stat"><div class="stat-ico ic-red">❌</div><div class="stat-body"><div class="lbl">Error</div><div class="val">${error}</div></div></div>
+    </div>
+    ${(skip+error)>0 ? `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px;margin-bottom:8px;font-size:12px">
+      ${details.filter(d=>!d.ok).map(d=>`<div>• ${d.msg}</div>`).join('')}
+    </div>`:''}
+    <div style="font-size:12px;color:var(--success);font-weight:600">Import selesai! ${sukses} data berhasil ditambahkan.</div>
+  `;
+
+  btn.disabled = false; btn.textContent = 'Import';
+  loadDirStats(); loadDir();
+};
