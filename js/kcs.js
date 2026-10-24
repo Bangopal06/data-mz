@@ -295,11 +295,26 @@ window.prosesImportSCS = async function() {
 
     // Cari baris header — baris yang ada kata "nama" (case insensitive)
     let headerIdx = -1;
-    for (let i = 0; i < Math.min(raw.length, 5); i++) {
+    for (let i = 0; i < Math.min(raw.length, 10); i++) {
       const row = raw[i].map(c => String(c||'').toLowerCase().trim());
-      if (row.some(c => c === 'nama')) { headerIdx = i; break; }
+      // Cek ada cell yang persis "nama" atau mengandung "nama"
+      if (row.some(c => c === 'nama' || c === 'nama lengkap' || c === 'nama_lengkap')) {
+        headerIdx = i; break;
+      }
     }
-    if (headerIdx === -1) { toast('Kolom "nama" tidak ditemukan di file','err'); btn.disabled=false; btn.textContent='Import'; return; }
+
+    // Debug: tampilkan 5 baris pertama kalau gagal
+    if (headerIdx === -1) {
+      const preview = raw.slice(0,5).map((r,i)=>`Baris ${i+1}: ${r.slice(0,5).join(' | ')}`).join('\n');
+      console.log('Preview file:\n'+preview);
+      document.getElementById('importSCSResult').innerHTML = `
+        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px;font-size:12px">
+          <strong>Kolom "nama" tidak ditemukan.</strong> Isi file kamu:<br>
+          <pre style="margin:8px 0;font-size:11px;overflow:auto">${raw.slice(0,6).map((r,i)=>`Baris ${i+1}: ${r.slice(0,6).map(c=>String(c||'—').substring(0,15)).join(' | ')}`).join('\n')}</pre>
+          Pastikan ada kolom bernama <strong>nama</strong> (huruf kecil/kapital sama saja).
+        </div>`;
+      btn.disabled=false; btn.textContent='Import'; return;
+    }
 
     const headers = raw[headerIdx].map(c => String(c||'').toLowerCase().trim().replace(/\s+/g,'_'));
     rows = raw.slice(headerIdx+1)
