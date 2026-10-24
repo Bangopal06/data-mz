@@ -11,7 +11,7 @@
 <div class="layout">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand"><div class="brand-icon"><img src="gambar/logo.png" style="width:40px;height:40px;object-fit:contain;border-radius:8px"></div><h2>Mitra Zakat Kebumen</h2><p>Panel Admin</p></div>
-                <nav class="sidebar-nav">
+    <nav class="sidebar-nav">
       <div class="nav-label">Menu Utama</div>
       <a href="index.html" class="nav-item"><span class="icon">🏠</span> Dashboard</a>
       <div class="nav-label">Donatur Rutin</div>
@@ -26,7 +26,7 @@
       <a href="laporan-kotak.html" class="nav-item"><span class="icon">🗃️</span> Lap. Kotak Infaq</a>
       <a href="laporan-kcs.html" class="nav-item"><span class="icon">📦</span> Lap. SCS</a>
       <a href="laporan-waqaf.html" class="nav-item"><span class="icon">🕌</span> Lap. Isidental</a>
-      <a href="laporan-petugas.html" class="nav-item"><span class="icon">&#128119;</span> Lap. Petugas</a>
+      <a href="laporan-petugas.html" class="nav-item"><span class="icon">👷</span> Lap. Petugas</a>
       <div class="nav-label">Pengaturan</div>
       <a href="petugas.html" class="nav-item"><span class="icon">👷</span> Petugas</a>
       <a href="direktori.html" class="nav-item"><span class="icon">📂</span> Direktori Data</a>
@@ -39,133 +39,76 @@
   <div class="main">
     <header class="header">
       <button class="header-menu" id="menuBtn">☰</button>
-      <div class="header-title">📦 KCS (Kotak Collection System)</div>
+      <div class="header-title">📦 SCS - Santri Cinta Sedekah</div>
       <div class="header-right"><span class="header-date" id="headerDate"></span></div>
     </header>
 
     <div class="page">
-      <div class="stats" id="kcsStats"></div>
+      <div class="stats" id="scsStats"></div>
 
       <div class="card">
         <div class="card-head" style="padding-bottom:0;border-bottom:none">
-          <div id="kcsTabs" class="tabs" style="border-bottom:1px solid var(--gray-200);margin-bottom:0;flex:1">
-            <button class="tab active" data-target="paneKcsData">📦 Data KCS <span class="cnt" id="cntKcsData">0</span></button>
-            <button class="tab" data-target="paneKcsProspek">👤 Prospek <span class="cnt" id="cntKcsProspek">0</span></button>
-            <button class="tab" data-target="paneKcsAmbil">📋 Riwayat Pengambilan <span class="cnt" id="cntKcsAmbil">0</span></button>
+          <div id="scsTabs" class="tabs" style="border-bottom:1px solid var(--gray-200);margin-bottom:0;flex:1">
+            <button class="tab active" data-target="paneSantri">🎓 Data Santri <span class="cnt" id="cntSantri">0</span></button>
+            <button class="tab" data-target="paneBayar">💰 Riwayat Sedekah <span class="cnt" id="cntBayar">0</span></button>
           </div>
           <div style="padding:12px 0 12px 16px;display:flex;gap:8px">
-            <button class="btn btn-outline btn-sm" onclick="triggerImportKCS()">⬆️ Import</button>
-            <button class="btn btn-outline btn-sm" onclick="exportKCS()">⬇️ Export</button>
-            <button class="btn btn-primary btn-sm" id="btnTambahKCS">+ Tambah</button>
+            <button class="btn btn-outline btn-sm" onclick="exportSCS()">⬇️ Export</button>
+            <button class="btn btn-outline btn-sm" onclick="importSantri()">⬆️ Import Excel</button>
+            <button class="btn btn-primary btn-sm" id="btnTambahSCS">+ Tambah</button>
           </div>
         </div>
 
-        <!-- Data KCS -->
-        <div id="paneKcsData" class="tab-pane" style="padding:16px 20px">
+        <!-- Data Santri -->
+        <div id="paneSantri" class="tab-pane active" style="padding:16px 20px">
           <div class="filters mb3">
-            <input type="text" id="srKcsData" class="inp" placeholder="🔍 Cari nama KCS/toko...">
-            <input type="text" id="srKcsKota" class="inp inp-sm" placeholder="Kota...">
-            <select id="flKcsStatus" class="sel">
+            <input type="text" id="srSantri" class="inp" placeholder="🔍 Cari nama / panggilan...">
+            <select id="flKelas" class="sel"><option value="">Semua Kelas</option></select>
+            <select id="flHalaqoh" class="sel"><option value="">Semua Halaqoh</option></select>
+            <select id="flStSantri" class="sel">
               <option value="">Semua Status</option>
               <option value="aktif">Aktif</option>
               <option value="tidak_aktif">Tidak Aktif</option>
             </select>
-            <select id="flKcsFrekuensi" class="sel">
-              <option value="">Semua Frekuensi</option>
-              <option value="mingguan">Mingguan</option>
-              <option value="dua_mingguan">2 Mingguan</option>
-              <option value="bulanan">Bulanan</option>
-            </select>
           </div>
-          <div class="kotak-grid" id="kcsGrid"></div>
-          <div id="pagKcsData"></div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>No</th><th>Nama</th><th>Panggilan</th><th>Kelas</th><th>Halaqoh</th><th>Status</th><th>Aksi</th></tr></thead>
+              <tbody id="tblSantri"></tbody>
+            </table>
+          </div>
+          <div class="card-foot" id="pagSantri"></div>
         </div>
 
-        <!-- Prospek KCS -->
-        <div id="paneKcsProspek" class="tab-pane" style="padding:16px 20px">
+        <!-- Riwayat Sedekah -->
+        <div id="paneBayar" class="tab-pane" style="padding:16px 20px">
           <div class="filters mb3">
-            <input type="text" id="srKcsProspek" class="inp" placeholder="🔍 Cari nama toko...">
-            <select id="flKcsProspekStatus" class="sel">
-              <option value="">Semua Status</option>
-              <option value="baru">Baru</option>
-              <option value="dihubungi">Dihubungi</option>
-              <option value="survei">Survei</option>
+            <input type="text" id="srBayarSCS" class="inp" placeholder="🔍 Cari nama santri...">
+            <select id="flKelasBayar" class="sel"><option value="">Semua Kelas</option></select>
+            <select id="flBulanBayar" class="sel">
+              <option value="">Semua Bulan</option>
+              <option value="01">Januari</option><option value="02">Februari</option>
+              <option value="03">Maret</option><option value="04">April</option>
+              <option value="05">Mei</option><option value="06">Juni</option>
+              <option value="07">Juli</option><option value="08">Agustus</option>
+              <option value="09">September</option><option value="10">Oktober</option>
+              <option value="11">November</option><option value="12">Desember</option>
             </select>
           </div>
           <div class="tbl-wrap">
             <table>
-              <thead><tr><th>Nama Toko</th><th>Pemilik</th><th>HP</th><th>Alamat</th><th>Kota</th><th>Status</th><th>Petugas</th><th>Aksi</th></tr></thead>
-              <tbody id="tblKcsProspek"></tbody>
+              <thead><tr><th>Nama Santri</th><th>Kelas</th><th>Halaqoh</th><th>Nominal</th><th>Tanggal</th><th>Petugas</th><th>Catatan</th><th>Aksi</th></tr></thead>
+              <tbody id="tblBayarSCS"></tbody>
             </table>
           </div>
-          <div class="card-foot" id="pagKcsProspek"></div>
-        </div>
-
-        <!-- Riwayat Pengambilan KCS -->
-        <div id="paneKcsAmbil" class="tab-pane" style="padding:16px 20px">
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
-            <div class="fg" style="min-width:130px">
-              <label class="flabel">Bulan</label>
-              <select id="flKcsAmbilBulan" class="sel" onchange="loadKcsAmbil()">
-                <option value="01">Januari</option><option value="02">Februari</option>
-                <option value="03">Maret</option><option value="04">April</option>
-                <option value="05">Mei</option><option value="06">Juni</option>
-                <option value="07">Juli</option><option value="08">Agustus</option>
-                <option value="09">September</option><option value="10">Oktober</option>
-                <option value="11">November</option><option value="12">Desember</option>
-              </select>
-            </div>
-            <div class="fg" style="min-width:100px">
-              <label class="flabel">Tahun</label>
-              <select id="flKcsAmbilTahun" class="sel" onchange="loadKcsAmbil()"></select>
-            </div>
-            <div class="fg" style="min-width:140px">
-              <label class="flabel">Tampilkan</label>
-              <select id="flKcsAmbilFilter" class="sel" onchange="loadKcsAmbil()">
-                <option value="semua">Semua</option>
-                <option value="sudah">✅ Sudah Diambil</option>
-                <option value="belum">⏳ Belum Diambil</option>
-              </select>
-            </div>
-            <div class="fg">
-              <label class="flabel">Cari</label>
-              <input type="text" id="srKcsAmbil" class="inp" placeholder="🔍 Cari nama..." oninput="loadKcsAmbil()">
-            </div>
-          </div>
-          <div id="kcsAmbilSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px"></div>
-
-          <div id="sectionKcsSudah" style="margin-bottom:20px">
-            <div style="font-size:13px;font-weight:700;color:var(--success);margin-bottom:8px;display:flex;align-items:center;gap:6px">
-              <span style="width:10px;height:10px;border-radius:50%;background:var(--success);display:inline-block"></span>
-              ✅ Sudah Diambil <span id="cntKcsSudah" class="badge b-green" style="margin-left:4px">0</span>
-            </div>
-            <div class="tbl-wrap">
-              <table>
-                <thead><tr><th>Nama KCS</th><th>Nama Toko</th><th>Kota</th><th>Tgl Ambil</th><th>Nominal</th><th>Petugas</th><th>Catatan</th><th>Aksi</th></tr></thead>
-                <tbody id="tblKcsSudah"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <div id="sectionKcsBelum">
-            <div style="font-size:13px;font-weight:700;color:var(--danger);margin-bottom:8px;display:flex;align-items:center;gap:6px">
-              <span style="width:10px;height:10px;border-radius:50%;background:var(--danger);display:inline-block"></span>
-              ⏳ Belum Diambil <span id="cntKcsBelum" class="badge b-red" style="margin-left:4px">0</span>
-            </div>
-            <div class="tbl-wrap">
-              <table>
-                <thead><tr><th>Nama KCS</th><th>Nama Toko</th><th>Alamat</th><th>Kota</th><th>Frekuensi</th><th>Terakhir Diambil</th><th>Petugas</th><th>Aksi</th></tr></thead>
-                <tbody id="tblKcsBelum"></tbody>
-              </table>
-            </div>
-          </div>
+          <div class="card-foot" id="pagBayarSCS"></div>
         </div>
       </div>
     </div>
   </div>
 </div>
 <div id="toast-wrap"></div>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" onerror="console.warn('SheetJS tidak tersedia')"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase.js"></script>
 <script src="js/db.js"></script>
