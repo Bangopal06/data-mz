@@ -219,27 +219,164 @@ function exportDir() {
 
 function importDir() {
   document.body.insertAdjacentHTML('beforeend', `<div class="overlay" id="ovImportDir">
-    <div class="modal" style="max-width:520px">
-      <div class="modal-head"><h3>⬆️ Import Direktori Data</h3><button class="modal-close" onclick="closeModal('ovImportDir')">✕</button></div>
+    <div class="modal" style="max-width:620px">
+      <div class="modal-head"><h3>⬆️ Import ke Direktori Data</h3><button class="modal-close" onclick="closeModal('ovImportDir')">✕</button></div>
       <div class="modal-body">
-        <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:14px;margin-bottom:16px;font-size:12px;color:var(--gray-600)">
-          <strong>Format kolom Excel/CSV:</strong><br>
-          <code>nama, kategori, hp, kota, alamat, keterangan, status</code><br><br>
-          <button class="btn btn-outline btn-sm" onclick="downloadTemplateDir()">⬇️ Download Template</button>
+        <div id="importStep1">
+          <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:14px;margin-bottom:16px;font-size:12px;color:var(--gray-600)">
+            Mendukung semua format Excel. Kolom apapun bisa dimapping ke field direktori.<br>
+            <strong>Contoh:</strong> Data Ustadz, Data Siswa, Donatur Ramadhan, dll.
+          </div>
+          <div class="fg" style="margin-bottom:12px">
+            <label class="flabel">Kategori Data *</label>
+            <input id="importKatDir" class="fctrl" placeholder="cth: Ustadz, Wali Murid, Donatur Ramadhan">
+          </div>
+          <div class="fg">
+            <label class="flabel">Pilih File Excel / CSV</label>
+            <input type="file" id="fileDir" class="fctrl" accept=".xlsx,.xls,.csv">
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="previewFileDir()">Preview File →</button>
         </div>
-        <div class="fg">
-          <label class="flabel">Pilih File Excel / CSV</label>
-          <input type="file" id="fileDir" class="fctrl" accept=".xlsx,.xls,.csv">
+        <div id="importStep2" style="display:none">
+          <div id="previewDirTable" style="margin-bottom:16px"></div>
+          <div id="mappingDir" style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:14px;margin-bottom:12px">
+            <div style="font-size:13px;font-weight:600;margin-bottom:10px">Mapping Kolom → Field Direktori</div>
+            <div id="mappingFields"></div>
+          </div>
         </div>
         <div id="importDirResult" style="margin-top:12px"></div>
       </div>
       <div class="modal-foot">
         <button class="btn btn-outline" onclick="closeModal('ovImportDir')">Tutup</button>
-        <button class="btn btn-primary" onclick="prosesImportDir()">Import</button>
+        <button class="btn btn-primary" id="btnDoImportDir" style="display:none" onclick="doImportDir()">Import Sekarang</button>
       </div>
     </div>
   </div>`);
 }
+
+let _importDirRows = [];
+let _importDirHeaders = [];
+
+window.previewFileDir = async function() {
+  const file = document.getElementById('fileDir').files[0];
+  const kat = document.getElementById('importKatDir').value.trim();
+  if (!file) { toast('Pilih file dulu','warn'); return; }
+  if (!kat) { toast('Isi kategori dulu','warn'); return; }
+
+  let allRows = [];
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    allRows = XLSX.utils.sheet_to_json(ws, {defval:'', header:1});
+  } catch(e) { toast('Gagal membaca file','err'); return; }
+
+  // Cari baris header — baris dengan paling banyak cell berisi teks (bukan angka)
+  let headerIdx = 0;
+  let maxTextCols = 0;
+  for (let i = 0; i < Math.min(allRows.length, 10); i++) {
+    const textCols = allRows[i].filter(c => {
+      const v = String(c||'').trim();
+      return v && isNaN(v) && v.length > 1;
+    }).length;
+    if (textCols > maxTextCols) { maxTextCols = textCols; headerIdx = i; }
+  }
+
+  _importDirHeaders = allRows[headerIdx].map(c => String(c||'').trim()).filter(Boolean);
+  _importDirRows = allRows.slice(headerIdx+1).filter(r => r.some(c => c !== '' && c !== null));
+
+  // Tampilkan preview 5 baris
+  const preview = `
+    <div style="font-size:12px;font-weight:600;margin-bottom:8px">Preview (${_importDirRows.length} baris ditemukan, menampilkan 5 pertama):</div>
+    <div style="overflow-x:auto;max-height:160px;border:1px solid var(--gray-200);border-radius:6px">
+      <table style="font-size:11px;border-collapse:collapse;width:100%;min-width:400px">
+        <thead><tr style="background:var(--gray-100)">${_importDirHeaders.map(h=>`<th style="padding:6px 8px;border:1px solid var(--gray-200);white-space:nowrap">${h}</th>`).join('')}</tr></thead>
+        <tbody>${_importDirRows.slice(0,5).map(r=>`<tr>${_importDirHeaders.map((_,i)=>`<td style="padding:4px 8px;border:1px solid var(--gray-200);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${String(r[i]||'')}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+  document.getElementById('previewDirTable').innerHTML = preview;
+
+  // Buat mapping fields
+  const fields = [
+    {key:'nama', label:'Nama *', required:true},
+    {key:'hp', label:'No. HP'},
+    {key:'alamat', label:'Alamat'},
+    {key:'kota', label:'Kota'},
+    {key:'keterangan', label:'Keterangan / Jabatan'},
+  ];
+  const colOpts = `<option value="">(kosongkan)</option>` + _importDirHeaders.map(h=>`<option value="${h}">${h}</option>`).join('');
+
+  document.getElementById('mappingFields').innerHTML = fields.map(f => {
+    // Auto-match: cari kolom yang namanya mirip
+    const autoMatch = _importDirHeaders.find(h => {
+      const hlow = h.toLowerCase();
+      const flow = f.key.toLowerCase();
+      return hlow === flow || hlow.includes(flow) || (f.key==='nama' && (hlow.includes('nama') || hlow==='name'));
+    }) || '';
+    return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <div style="width:140px;font-size:12px;font-weight:600">${f.label}</div>
+      <select id="map_${f.key}" class="fctrl" style="flex:1">
+        ${colOpts.replace(`value="${autoMatch}"`, `value="${autoMatch}" selected`)}
+      </select>
+    </div>`;
+  }).join('');
+
+  document.getElementById('importStep1').style.display = 'none';
+  document.getElementById('importStep2').style.display = 'block';
+  document.getElementById('btnDoImportDir').style.display = 'inline-flex';
+};
+
+window.doImportDir = async function() {
+  const kat = document.getElementById('importKatDir').value.trim();
+  const getNama = document.getElementById('map_nama')?.value;
+  if (!getNama) { toast('Kolom Nama wajib dipilih','warn'); return; }
+
+  const btn = document.getElementById('btnDoImportDir');
+  btn.disabled=true; btn.textContent='Mengimport...';
+
+  const getVal = (row, colName) => {
+    if (!colName) return '';
+    const idx = _importDirHeaders.indexOf(colName);
+    return idx >= 0 ? String(row[idx]||'').trim() : '';
+  };
+
+  let sukses=0, skip=0;
+  for (const row of _importDirRows) {
+    const nama = getVal(row, getNama);
+    if (!nama || nama.toLowerCase() === 'nama') { skip++; continue; }
+    const payload = {
+      nama,
+      kategori: kat,
+      hp: getVal(row, document.getElementById('map_hp')?.value),
+      alamat: getVal(row, document.getElementById('map_alamat')?.value),
+      kota: getVal(row, document.getElementById('map_kota')?.value),
+      keterangan: getVal(row, document.getElementById('map_keterangan')?.value),
+      status: 'aktif',
+      extra: {}
+    };
+    // Simpan kolom extra yang tidak dimapping
+    const mappedCols = ['map_nama','map_hp','map_alamat','map_kota','map_keterangan']
+      .map(id => document.getElementById(id)?.value).filter(Boolean);
+    _importDirHeaders.forEach((h, i) => {
+      if (!mappedCols.includes(h) && h && String(row[i]||'').trim()) {
+        payload.extra[h] = String(row[i]||'').trim();
+      }
+    });
+    const r = await DB.insert('direktori', payload);
+    if (r) sukses++; else skip++;
+  }
+
+  await DB.sync('direktori', {force:true});
+  document.getElementById('importDirResult').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div class="stat"><div class="stat-ico ic-green">✅</div><div class="stat-body"><div class="lbl">Berhasil</div><div class="val">${sukses}</div></div></div>
+      <div class="stat"><div class="stat-ico ic-yellow">⏭️</div><div class="stat-body"><div class="lbl">Dilewati</div><div class="val">${skip}</div></div></div>
+    </div>
+    <div style="font-size:13px;color:var(--success);font-weight:600">✓ ${sukses} data berhasil diimport ke kategori "${kat}"!</div>
+  `;
+  btn.disabled=false; btn.textContent='Import Sekarang';
+  loadDirStats(); loadDir(); loadKategoriFilter();
+};
 
 window.downloadTemplateDir = function() {
   const headers = ['nama','kategori','hp','kota','alamat','keterangan','status'];
