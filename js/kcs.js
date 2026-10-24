@@ -284,63 +284,87 @@ window.prosesImportSCS = async function() {
   const btn = document.querySelector('#ovImportSCS .btn-primary');
   btn.disabled=true; btn.textContent='Memproses...';
 
-  let rows = [];
+  let allRows = [];
   try {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, {type:'array'});
     const ws = wb.Sheets[wb.SheetNames[0]];
-    // Ambil semua data termasuk baris header-nya
-    const raw = XLSX.utils.sheet_to_json(ws, {defval:'', header:1});
-    if (raw.length < 2) { toast('File kosong','warn'); btn.disabled=false; btn.textContent='Import'; return; }
-
-    // Cari baris header — baris yang ada kata "nama" (case insensitive)
-    let headerIdx = -1;
-    for (let i = 0; i < Math.min(raw.length, 10); i++) {
-      const row = raw[i].map(c => String(c||'').toLowerCase().trim());
-      // Cek ada cell yang persis "nama" atau mengandung "nama"
-      if (row.some(c => c === 'nama' || c === 'nama lengkap' || c === 'nama_lengkap')) {
-        headerIdx = i; break;
-      }
-    }
-
-    // Debug: tampilkan 5 baris pertama kalau gagal
-    if (headerIdx === -1) {
-      const preview = raw.slice(0,5).map((r,i)=>`Baris ${i+1}: ${r.slice(0,5).join(' | ')}`).join('\n');
-      console.log('Preview file:\n'+preview);
-      document.getElementById('importSCSResult').innerHTML = `
-        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px;font-size:12px">
-          <strong>Kolom "nama" tidak ditemukan.</strong> Isi file kamu:<br>
-          <pre style="margin:8px 0;font-size:11px;overflow:auto">${raw.slice(0,6).map((r,i)=>`Baris ${i+1}: ${r.slice(0,6).map(c=>String(c||'—').substring(0,15)).join(' | ')}`).join('\n')}</pre>
-          Pastikan ada kolom bernama <strong>nama</strong> (huruf kecil/kapital sama saja).
-        </div>`;
-      btn.disabled=false; btn.textContent='Import'; return;
-    }
-
-    const headers = raw[headerIdx].map(c => String(c||'').toLowerCase().trim().replace(/\s+/g,'_'));
-    rows = raw.slice(headerIdx+1)
-      .filter(r => r.some(c => c !== '' && c !== null && c !== undefined))
-      .map(r => {
-        const obj = {};
-        headers.forEach((h,i) => { if(h) obj[h] = String(r[i]||'').trim(); });
-        return obj;
-      });
+    allRows = XLSX.utils.sheet_to_json(ws, {defval:'', header:1});
   } catch(e) { toast('Gagal membaca file: '+e.message,'err'); btn.disabled=false; btn.textContent='Import'; return; }
 
+  // Cari baris header dengan berbagai kemungkinan: nama, Nama, NAMA, nama lengkap dll
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(allRows.length, 15); i++) {
+    const row = allRows[i];
+    const found = row.some(c => {
+      const v = String(c||'').toLowerCase().trim();
+      return v === 'nama' || v === 'nama lengkap' || v === 'nama_lengkap' || v === 'nama siswa' || v === 'nama santri';
+    });
+    if (found) { headerIdx = i; break; }
+  }
+
+  if (headerIdx === -1) {
+    // Tampilkan preview untuk debug
+    const preview = allRows.slice(0,8).map((r,i) =>
+      `<tr><td style="padding:3px 6px;color:var(--gray-400)">${i+1}</td>${r.slice(0,6).map(c=>`<td style="padding:3px 8px;border:1px solid var(--gray-200)">${String(c||'').substring(0,20)}</td>`).join('')}</tr>`
+    ).join('');
+    document.getElementById('importSCSResult').innerHTML = `
+      <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px;font-size:12px">
+        <strong>⚠️ Kolom "Nama" tidak ditemukan.</strong> Ini isi file kamu (6 kolom pertama):<br><br>
+        <table style="font-size:11px;border-collapse:collapse;width:100%">${preview}</table><br>
+        Ketik nama kolom yang berisi nama santri:
+        <input id="namaKolom" class="fctrl" style="margin-top:6px" placeholder="cth: Nama, NAMA, Nama Santri">
+        <button class="btn btn-primary btn-sm" style="margin-top:6px" onclick="prosesImportSCSWithKolom()">Coba Import</button>
+      </div>`;
+    btn.disabled=false; btn.textContent='Import'; return;
+  }
+
+  await doImportSCS(allRows, headerIdx);
+  btn.disabled=false; btn.textContent='Import';
+};
+
+window.prosesImportSCSWithKolom = async function() {
+  const namaKolom = document.getElementById('namaKolom')?.value.trim();
+  if (!namaKolom) { toast('Isi nama kolom dulu','warn'); return; }
+  const file = document.getElementById('fileSCS').files[0];
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, {type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const allRows = XLSX.utils.sheet_to_json(ws, {defval:'', header:1});
+
+  let headerIdx = -1;
+  for (let i = 0; i < allRows.length; i++) {
+    if (allRows[i].some(c => String(c||'').toLowerCase().trim() === namaKolom.toLowerCase().trim())) {
+      headerIdx = i; break;
+    }
+  }
+  if (headerIdx === -1) { toast(`Kolom "${namaKolom}" tidak ditemukan`,'err'); return; }
+  await doImportSCS(allRows, headerIdx);
+};
+
+async function doImportSCS(allRows, headerIdx) {
+  const headers = allRows[headerIdx].map(c => String(c||'').toLowerCase().trim().replace(/\s+/g,'_'));
+  const rows = allRows.slice(headerIdx+1).filter(r => r.some(c => c !== '' && c !== null));
+
+  // Cari index kolom nama (bisa berbeda posisi)
+  const namaIdx = headers.findIndex(h => h === 'nama' || h.includes('nama'));
+  const pangIdx = headers.findIndex(h => h.includes('panggilan') || h.includes('nickname'));
+  const kelasIdx = headers.findIndex(h => h === 'kelas' || h.includes('kelas'));
+  const halaqohIdx = headers.findIndex(h => h.includes('halaqoh') || h.includes('halaqah') || h.includes('halaqah'));
+
   let sukses=0, skip=0;
-  const skipList = [];
   for (const row of rows) {
-    // Coba berbagai key untuk nama
-    const nama = (row.nama || row['nama_lengkap'] || row['nama lengkap'] || '').trim();
-    if (!nama) { skip++; skipList.push('Baris kosong'); continue; }
+    const nama = namaIdx >= 0 ? String(row[namaIdx]||'').trim() : '';
+    if (!nama) { skip++; continue; }
     const payload = {
       nama,
-      panggilan: row.panggilan || row.nickname || '',
-      kelas: row.kelas || '',
-      halaqoh: row.halaqoh || row.halaqah || '',
+      panggilan: pangIdx >= 0 ? String(row[pangIdx]||'').trim() : '',
+      kelas: kelasIdx >= 0 ? String(row[kelasIdx]||'').trim() : '',
+      halaqoh: halaqohIdx >= 0 ? String(row[halaqohIdx]||'').trim() : '',
       status: 'aktif'
     };
     const r = await DB.insert('scs_santri', payload);
-    if (r) sukses++; else { skip++; skipList.push(nama); }
+    if (r) sukses++; else skip++;
   }
   await DB.sync('scs_santri', {force:true});
 
@@ -349,14 +373,10 @@ window.prosesImportSCS = async function() {
       <div class="stat"><div class="stat-ico ic-green">✅</div><div class="stat-body"><div class="lbl">Berhasil</div><div class="val">${sukses}</div></div></div>
       <div class="stat"><div class="stat-ico ic-yellow">⏭️</div><div class="stat-body"><div class="lbl">Dilewati</div><div class="val">${skip}</div></div></div>
     </div>
-    ${skipList.length && sukses===0 ? `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px;font-size:12px;margin-bottom:8px">
-      <strong>Header terdeteksi tidak cocok.</strong> Pastikan file punya kolom bernama persis: <code>nama, panggilan, kelas, halaqoh</code>
-    </div>` : ''}
     <div style="font-size:12px;color:var(--success);font-weight:600">${sukses} santri berhasil diimport!</div>
   `;
-  btn.disabled=false; btn.textContent='Import';
   loadSCSStats(); loadSantri(); loadFilterOptions();
-};
+}
 
 function exportSCS() {
   const tab = document.querySelector('#scsTabs .tab.active').dataset.target;
