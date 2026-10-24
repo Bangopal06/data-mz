@@ -30,10 +30,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function loadKategoriFilter() {
-  const list = getKategori();
+  // Gabung kategori dari localStorage + dari data yang sudah ada di DB
+  const savedList = getKategori();
+  const dbKategori = [...new Set(DB.get('direktori').map(d => d.kategori).filter(Boolean))];
+  const allKat = [...new Set([...savedList, ...dbKategori])].sort();
+
   const sel = document.getElementById('flKatDir');
   sel.innerHTML = '<option value="">Semua Kategori</option>' +
-    list.map(k => `<option value="${k}">${k}</option>`).join('');
+    allKat.map(k => `<option value="${k}">${k}</option>`).join('');
 }
 
 function loadDirStats() {
@@ -54,7 +58,7 @@ function loadDir() {
   const kat = document.getElementById('flKatDir').value;
   const st = document.getElementById('flStDir').value;
   if (sr) data = data.filter(d => d.nama.toLowerCase().includes(sr) || (d.hp||'').includes(sr) || (d.keterangan||'').toLowerCase().includes(sr));
-  if (kat) data = data.filter(d => d.kategori === kat);
+  if (kat) data = data.filter(d => (d.kategori||'').toLowerCase() === kat.toLowerCase());
   if (st) data = data.filter(d => d.status === st);
   data.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
 
