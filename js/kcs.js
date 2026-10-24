@@ -289,36 +289,55 @@ window.prosesImportSCS = async function() {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, {type:'array'});
     const ws = wb.Sheets[wb.SheetNames[0]];
-    const raw = XLSX.utils.sheet_to_json(ws, {defval:''});
-    rows = raw.map(r=>{
-      const obj={};
-      Object.keys(r).forEach(k=>obj[k.toLowerCase().trim().replace(/\s+/g,'_')]=String(r[k]||'').trim());
-      return obj;
-    });
-  } catch(e) { toast('Gagal membaca file','err'); btn.disabled=false; btn.textContent='Import'; return; }
+    // Ambil semua data termasuk baris header-nya
+    const raw = XLSX.utils.sheet_to_json(ws, {defval:'', header:1});
+    if (raw.length < 2) { toast('File kosong','warn'); btn.disabled=false; btn.textContent='Import'; return; }
+
+    // Cari baris header — baris yang ada kata "nama" (case insensitive)
+    let headerIdx = -1;
+    for (let i = 0; i < Math.min(raw.length, 5); i++) {
+      const row = raw[i].map(c => String(c||'').toLowerCase().trim());
+      if (row.some(c => c === 'nama')) { headerIdx = i; break; }
+    }
+    if (headerIdx === -1) { toast('Kolom "nama" tidak ditemukan di file','err'); btn.disabled=false; btn.textContent='Import'; return; }
+
+    const headers = raw[headerIdx].map(c => String(c||'').toLowerCase().trim().replace(/\s+/g,'_'));
+    rows = raw.slice(headerIdx+1)
+      .filter(r => r.some(c => c !== '' && c !== null && c !== undefined))
+      .map(r => {
+        const obj = {};
+        headers.forEach((h,i) => { if(h) obj[h] = String(r[i]||'').trim(); });
+        return obj;
+      });
+  } catch(e) { toast('Gagal membaca file: '+e.message,'err'); btn.disabled=false; btn.textContent='Import'; return; }
 
   let sukses=0, skip=0;
+  const skipList = [];
   for (const row of rows) {
-    const nama = (row.nama||'').trim();
-    if (!nama) { skip++; continue; }
+    // Coba berbagai key untuk nama
+    const nama = (row.nama || row['nama_lengkap'] || row['nama lengkap'] || '').trim();
+    if (!nama) { skip++; skipList.push('Baris kosong'); continue; }
     const payload = {
       nama,
-      panggilan: row.panggilan||'',
-      kelas: row.kelas||'',
-      halaqoh: row.halaqoh||row.halaqoh||'',
+      panggilan: row.panggilan || row.nickname || '',
+      kelas: row.kelas || '',
+      halaqoh: row.halaqoh || row.halaqah || '',
       status: 'aktif'
     };
     const r = await DB.insert('scs_santri', payload);
-    if (r) sukses++; else skip++;
+    if (r) sukses++; else { skip++; skipList.push(nama); }
   }
   await DB.sync('scs_santri', {force:true});
 
   document.getElementById('importSCSResult').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
       <div class="stat"><div class="stat-ico ic-green">✅</div><div class="stat-body"><div class="lbl">Berhasil</div><div class="val">${sukses}</div></div></div>
       <div class="stat"><div class="stat-ico ic-yellow">⏭️</div><div class="stat-body"><div class="lbl">Dilewati</div><div class="val">${skip}</div></div></div>
     </div>
-    <div style="margin-top:8px;font-size:12px;color:var(--success);font-weight:600">${sukses} santri berhasil diimport!</div>
+    ${skipList.length && sukses===0 ? `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px;font-size:12px;margin-bottom:8px">
+      <strong>Header terdeteksi tidak cocok.</strong> Pastikan file punya kolom bernama persis: <code>nama, panggilan, kelas, halaqoh</code>
+    </div>` : ''}
+    <div style="font-size:12px;color:var(--success);font-weight:600">${sukses} santri berhasil diimport!</div>
   `;
   btn.disabled=false; btn.textContent='Import';
   loadSCSStats(); loadSantri(); loadFilterOptions();
