@@ -221,3 +221,80 @@ ALTER TABLE kcs_pengambilan DISABLE ROW LEVEL SECURITY;
 ALTER TABLE waqaf_program DISABLE ROW LEVEL SECURITY;
 ALTER TABLE donatur_waqaf DISABLE ROW LEVEL SECURITY;
 ALTER TABLE prospek_waqaf DISABLE ROW LEVEL SECURITY;
+
+-- =============================================
+-- SCS - Santri Cinta Sedekah
+-- =============================================
+CREATE TABLE IF NOT EXISTS scs_santri (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nama TEXT NOT NULL,
+  panggilan TEXT,
+  kelas TEXT,
+  halaqoh TEXT,
+  status TEXT DEFAULT 'aktif',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS scs_pembayaran (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  santri_id UUID REFERENCES scs_santri(id) ON DELETE CASCADE,
+  nama_santri TEXT,
+  kelas TEXT,
+  halaqoh TEXT,
+  nominal BIGINT DEFAULT 0,
+  tgl_bayar DATE NOT NULL,
+  petugas TEXT,
+  catatan TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- S3 - Ustadz/Ustadzah
+CREATE TABLE IF NOT EXISTS s3_ustadz (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nama TEXT NOT NULL,
+  panggilan TEXT,
+  amanah TEXT,
+  hp TEXT,
+  status TEXT DEFAULT 'aktif',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Direktori Data
+CREATE TABLE IF NOT EXISTS direktori (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nama TEXT NOT NULL,
+  kategori TEXT NOT NULL,
+  hp TEXT,
+  alamat TEXT,
+  kota TEXT,
+  keterangan TEXT,
+  extra JSONB DEFAULT '{}',
+  status TEXT DEFAULT 'aktif',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Petugas
+CREATE TABLE IF NOT EXISTS petugas (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nama TEXT NOT NULL,
+  jabatan TEXT,
+  status TEXT DEFAULT 'aktif',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Disable RLS semua tabel baru
+ALTER TABLE scs_santri DISABLE ROW LEVEL SECURITY;
+ALTER TABLE scs_pembayaran DISABLE ROW LEVEL SECURITY;
+ALTER TABLE s3_ustadz DISABLE ROW LEVEL SECURITY;
+ALTER TABLE direktori DISABLE ROW LEVEL SECURITY;
+ALTER TABLE petugas DISABLE ROW LEVEL SECURITY;
+
+GRANT ALL ON scs_santri TO anon;
+GRANT ALL ON scs_pembayaran TO anon;
+GRANT ALL ON s3_ustadz TO anon;
+GRANT ALL ON direktori TO anon;
+GRANT ALL ON petugas TO anon;

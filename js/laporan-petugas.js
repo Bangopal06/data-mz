@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     DB.sync('donatur_waqaf'),
     DB.sync('waqaf_program'),
     DB.sync('prospek_kotak'),
-    DB.sync('kcs_prospek'),
     DB.sync('prospek_rutin')
   ]);
   initFilter();
@@ -174,7 +173,7 @@ window.renderPetugas = function() {
 
   // PROSPEK PER PETUGAS
   const allProspekKotak = DB.get('prospek_kotak');
-  const allProspekSCS = DB.get('kcs_prospek');
+  const allProspekSCS = [];  // SCS tidak pakai prospek
   const allProspekRutin = DB.get('prospek_rutin');
 
   // Gabung semua prospek
@@ -231,8 +230,8 @@ window.exportLaporanPetugas = function() {
   DB.get('pengambilan_kotak').filter(a=>a.petugas&&(a.tgl_ambil||'').startsWith(periode)).forEach(a => {
     rows.push({ petugas:a.petugas, jenis:'Kotak Infaq', nama:a.nama_toko||'-', nominal:a.nominal, tgl:a.tgl_ambil||'' });
   });
-  DB.get('kcs_pengambilan').filter(a=>a.petugas&&(a.tgl_ambil||'').startsWith(periode)).forEach(a => {
-    rows.push({ petugas:a.petugas, jenis:'SCS', nama:a.nama_toko||'-', nominal:a.nominal, tgl:a.tgl_ambil||'' });
+  DB.get('scs_pembayaran').filter(b=>b.petugas&&(b.tgl_bayar||'').startsWith(periode)).forEach(b => {
+    rows.push({ petugas:b.petugas, jenis:'SCS', nama:b.nama_santri||'-', nominal:b.nominal, tgl:b.tgl_bayar||'' });
   });
   DB.get('donatur_waqaf').filter(d=>d.petugas&&(d.tgl_donasi||'').startsWith(periode)).forEach(d => {
     rows.push({ petugas:d.petugas, jenis:'Isidental', nama:d.nama||'-', nominal:d.nominal, tgl:d.tgl_donasi||'' });
