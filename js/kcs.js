@@ -1,19 +1,25 @@
-﻿let pgSantri=1, pgBayarSCS=1;
+﻿let pgSantri=1, pgBayarSCS=1, pgUstadz=1;
 const PS=15;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  loadSCSStats(); loadSantri(); loadBayarSCS();
+  loadSCSStats(); loadUstadz(); loadSantri(); loadBayarSCS();
   initTabs('scsTabs', t => {
-    if (t==='paneSantri') loadSantri();
+    if (t==='paneUstadz') loadUstadz();
+    else if (t==='paneSantri') loadSantri();
     else loadBayarSCS();
   });
 
   document.getElementById('btnTambahSCS').addEventListener('click', () => {
     const tab = document.querySelector('#scsTabs .tab.active').dataset.target;
-    if (tab==='paneSantri') openModalSantri();
+    if (tab==='paneUstadz') openModalUstadz();
+    else if (tab==='paneSantri') openModalSantri();
     else openModalBayarSCS();
   });
 
+  ['srUstadz','flStUstadz'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', debounce(() => { pgUstadz=1; loadUstadz(); }));
+    document.getElementById(id)?.addEventListener('change', () => { pgUstadz=1; loadUstadz(); });
+  });
   ['srSantri','flKelas','flHalaqoh','flStSantri'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', debounce(() => { pgSantri=1; loadSantri(); }));
     document.getElementById(id)?.addEventListener('change', () => { pgSantri=1; loadSantri(); });
@@ -23,8 +29,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById(id)?.addEventListener('change', () => { pgBayarSCS=1; loadBayarSCS(); });
   });
 
-  await Promise.all([DB.sync('scs_santri'), DB.sync('scs_pembayaran'), DB.sync('petugas')]);
-  loadSCSStats(); loadSantri(); loadBayarSCS(); loadFilterOptions();
+  await Promise.all([DB.sync('s3_ustadz'), DB.sync('scs_santri'), DB.sync('scs_pembayaran'), DB.sync('petugas')]);
+  loadSCSStats(); loadUstadz(); loadSantri(); loadBayarSCS(); loadFilterOptions();
 });
 
 function loadFilterOptions() {
@@ -40,6 +46,7 @@ function loadFilterOptions() {
 }
 
 function loadSCSStats() {
+  const ustadz = DB.get('s3_ustadz');
   const santri = DB.get('scs_santri');
   const bayar = DB.get('scs_pembayaran');
   const bulanIni = new Date().toISOString().slice(0,7);
@@ -48,12 +55,167 @@ function loadSCSStats() {
   const kelas = [...new Set(santri.map(s=>s.kelas).filter(Boolean))];
 
   document.getElementById('scsStats').innerHTML = `
+    <div class="stat"><div class="stat-ico ic-purple">👨‍🏫</div><div class="stat-body"><div class="lbl">Ustadz/Ustadzah</div><div class="val">${ustadz.filter(u=>u.status==='aktif').length}</div><div class="sub">${ustadz.length} terdaftar</div></div></div>
     <div class="stat"><div class="stat-ico ic-blue">🎓</div><div class="stat-body"><div class="lbl">Total Santri</div><div class="val">${santri.filter(s=>s.status==='aktif').length}</div><div class="sub">${santri.length} terdaftar · ${kelas.length} kelas</div></div></div>
     <div class="stat"><div class="stat-ico ic-green">💰</div><div class="stat-body"><div class="lbl">Sedekah Bulan Ini</div><div class="val rupiah" style="font-size:14px">${rupiah(totalBulanIni)}</div><div class="sub">${bayar.filter(b=>b.tgl_bayar?.startsWith(bulanIni)).length} transaksi</div></div></div>
-    <div class="stat"><div class="stat-ico ic-purple">📊</div><div class="stat-body"><div class="lbl">Total Sedekah</div><div class="val rupiah" style="font-size:14px">${rupiah(totalSemua)}</div></div></div>
-    <div class="stat"><div class="stat-ico ic-orange">📋</div><div class="stat-body"><div class="lbl">Riwayat</div><div class="val">${bayar.length}</div><div class="sub">total transaksi</div></div></div>
+    <div class="stat"><div class="stat-ico ic-orange">📊</div><div class="stat-body"><div class="lbl">Total Sedekah</div><div class="val rupiah" style="font-size:14px">${rupiah(totalSemua)}</div></div></div>
   `;
 }
+
+// ===== DATA USTADZ/USTADZAH =====
+function loadUstadz() {
+  let data = DB.get('s3_ustadz');
+  const sr = document.getElementById('srUstadz')?.value.toLowerCase()||'';
+  const st = document.getElementById('flStUstadz')?.value||'';
+  if (sr) data = data.filter(u=>u.nama.toLowerCase().includes(sr)||(u.panggilan||'').toLowerCase().includes(sr));
+  if (st) data = data.filter(u=>u.status===st);
+  document.getElementById('cntUstadz').textContent = data.length;
+  const { items, total } = paginate(data, pgUstadz, PS);
+  const offset = (pgUstadz-1)*PS;
+  document.getElementById('tblUstadz').innerHTML = items.length ? items.map((u,i) => `
+    <tr>
+      <td style="text-align:center;color:var(--gray-400)">${offset+i+1}</td>
+      <td style="font-weight:600">${u.nama}</td>
+      <td style="font-size:12px">${u.panggilan||'-'}</td>
+      <td style="font-size:12px">${u.amanah||'-'}</td>
+      <td class="td-mono">${u.hp||'-'}</td>
+      <td>${badge(u.status)}</td>
+      <td><div class="td-actions">
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="openModalUstadz('${u.id}')">✏️</button>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="hapusUstadz('${u.id}')">🗑️</button>
+      </div></td>
+    </tr>`).join('')
+  : `<tr><td colspan="7"><div class="empty"><div class="ei">👨‍🏫</div><div class="et">Belum ada data ustadz/ustadzah</div></div></td></tr>`;
+  renderPagination('pagUstadz', total, pgUstadz, PS, 'goPgUstadz');
+}
+window.goPgUstadz = p => { pgUstadz=p; loadUstadz(); };
+
+window.openModalUstadz = function(id=null) {
+  const u = id ? DB.get('s3_ustadz').find(x=>x.id===id) : null;
+  document.body.insertAdjacentHTML('beforeend', `<div class="overlay" id="ovUstadz">
+    <div class="modal">
+      <div class="modal-head"><h3>${u?'Edit':'Tambah'} Ustadz/Ustadzah</h3><button class="modal-close" onclick="closeModal('ovUstadz')">✕</button></div>
+      <div class="modal-body">
+        <div class="fgrid">
+          <div class="fg fcol2"><label class="flabel">Nama Lengkap *</label><input id="uNama" class="fctrl" value="${u?.nama||''}"></div>
+          <div class="fg"><label class="flabel">Panggilan</label><input id="uPanggilan" class="fctrl" value="${u?.panggilan||''}"></div>
+          <div class="fg"><label class="flabel">Amanah / Jabatan</label><input id="uAmanah" class="fctrl" value="${u?.amanah||''}" placeholder="cth: Direktur, Sekretaris"></div>
+          <div class="fg"><label class="flabel">No. HP</label><input id="uHP" class="fctrl" value="${u?.hp||''}"></div>
+          <div class="fg"><label class="flabel">Status</label>
+            <select id="uStatus" class="fctrl">
+              <option value="aktif" ${u?.status==='aktif'||!u?'selected':''}>Aktif</option>
+              <option value="tidak_aktif" ${u?.status==='tidak_aktif'?'selected':''}>Tidak Aktif</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-outline" onclick="closeModal('ovUstadz')">Batal</button>
+        <button class="btn btn-primary" onclick="saveUstadz('${id||''}')">Simpan</button>
+      </div>
+    </div>
+  </div>`);
+};
+
+window.saveUstadz = async function(id) {
+  const nama = document.getElementById('uNama').value.trim();
+  if (!nama) { toast('Nama wajib diisi','warn'); return; }
+  const btn = document.querySelector('#ovUstadz .btn-primary');
+  if (btn) { btn.disabled=true; btn.textContent='Menyimpan...'; }
+  const payload = {
+    nama,
+    panggilan: document.getElementById('uPanggilan').value.trim(),
+    amanah: document.getElementById('uAmanah').value.trim(),
+    hp: document.getElementById('uHP').value.trim(),
+    status: document.getElementById('uStatus').value
+  };
+  const r = id ? await DB.update('s3_ustadz',id,payload) : await DB.insert('s3_ustadz',payload);
+  if (!r) { toast('Gagal menyimpan','err'); return; }
+  await DB.sync('s3_ustadz', {force:true});
+  toast(id?'Data diperbarui':'Ustadz/Ustadzah ditambahkan','ok');
+  closeModal('ovUstadz'); loadSCSStats(); loadUstadz();
+};
+
+window.hapusUstadz = async function(id) {
+  if (!await confirmDel()) return;
+  if (!await DB.delete('s3_ustadz',id)) { toast('Gagal menghapus','err'); return; }
+  await DB.sync('s3_ustadz', {force:true});
+  toast('Dihapus','ok'); loadSCSStats(); loadUstadz();
+};
+
+// Import Ustadz
+window.importUstadz = function() {
+  document.body.insertAdjacentHTML('beforeend', `<div class="overlay" id="ovImportUstadz">
+    <div class="modal" style="max-width:500px">
+      <div class="modal-head"><h3>⬆️ Import Data Ustadz S3</h3><button class="modal-close" onclick="closeModal('ovImportUstadz')">✕</button></div>
+      <div class="modal-body">
+        <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px">
+          Format kolom: <code>nama, panggilan, amanah, hp</code><br>
+          File bisa punya judul di baris atas — sistem otomatis deteksi header.
+        </div>
+        <div class="fg"><label class="flabel">Pilih File Excel</label>
+          <input type="file" id="fileUstadz" class="fctrl" accept=".xlsx,.xls,.csv">
+        </div>
+        <div id="importUstadzResult" style="margin-top:12px"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-outline" onclick="closeModal('ovImportUstadz')">Tutup</button>
+        <button class="btn btn-primary" onclick="prosesImportUstadz()">Import</button>
+      </div>
+    </div>
+  </div>`);
+};
+
+window.prosesImportUstadz = async function() {
+  const file = document.getElementById('fileUstadz').files[0];
+  if (!file) { toast('Pilih file dulu','warn'); return; }
+  const btn = document.querySelector('#ovImportUstadz .btn-primary');
+  btn.disabled=true; btn.textContent='Memproses...';
+  let allRows=[];
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf,{type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    allRows = XLSX.utils.sheet_to_json(ws,{defval:'',header:1});
+  } catch(e) { toast('Gagal membaca file','err'); btn.disabled=false; btn.textContent='Import'; return; }
+
+  // Cari header baris yang ada "nama"
+  let headerIdx=0, maxText=0;
+  for (let i=0;i<Math.min(allRows.length,10);i++) {
+    const tc = allRows[i].filter(c=>isNaN(String(c||'').trim())&&String(c||'').trim().length>1).length;
+    if (tc>maxText){maxText=tc;headerIdx=i;}
+  }
+  const headers = allRows[headerIdx].map(c=>String(c||'').toLowerCase().trim());
+  const rows = allRows.slice(headerIdx+1).filter(r=>r.some(c=>c!==''&&c!==null));
+
+  const iNama = headers.findIndex(h=>h.includes('nama'));
+  const iPang = headers.findIndex(h=>h.includes('panggil'));
+  const iAman = headers.findIndex(h=>h.includes('amanah')||h.includes('jabat'));
+  const iHP = headers.findIndex(h=>h.includes('hp')||h.includes('telp')||h.includes('phone'));
+
+  let sukses=0, skip=0;
+  for (const row of rows) {
+    const nama = iNama>=0 ? String(row[iNama]||'').trim() : '';
+    if (!nama) { skip++; continue; }
+    const r = await DB.insert('s3_ustadz', {
+      nama,
+      panggilan: iPang>=0?String(row[iPang]||'').trim():'',
+      amanah: iAman>=0?String(row[iAman]||'').trim():'',
+      hp: iHP>=0?String(row[iHP]||'').trim():'',
+      status:'aktif'
+    });
+    if (r) sukses++; else skip++;
+  }
+  await DB.sync('s3_ustadz',{force:true});
+  document.getElementById('importUstadzResult').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="stat"><div class="stat-ico ic-green">✅</div><div class="stat-body"><div class="lbl">Berhasil</div><div class="val">${sukses}</div></div></div>
+      <div class="stat"><div class="stat-ico ic-yellow">⏭️</div><div class="stat-body"><div class="lbl">Dilewati</div><div class="val">${skip}</div></div></div>
+    </div>
+    <div style="margin-top:8px;font-size:12px;color:var(--success);font-weight:600">${sukses} ustadz/ustadzah berhasil diimport!</div>`;
+  btn.disabled=false; btn.textContent='Import';
+  loadSCSStats(); loadUstadz();
+};
 
 // ===== DATA SANTRI =====
 function loadSantri() {
