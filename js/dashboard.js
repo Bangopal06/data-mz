@@ -5,10 +5,10 @@
   // Background sync semua tabel sekaligus
   await Promise.all([
     DB.sync('donatur_rutin'), DB.sync('prospek_rutin'),
-    DB.sync('kotak_infaq'), DB.sync('kcs_data'),
+    DB.sync('kotak_infaq'), DB.sync('scs_santri'),
     DB.sync('donatur_waqaf'), DB.sync('waqaf_program'),
     DB.sync('pembayaran_rutin'), DB.sync('pengambilan_kotak'),
-    DB.sync('kcs_pengambilan')
+    DB.sync('scs_pembayaran')
   ]);
 
   // Re-render dengan data terbaru
@@ -31,27 +31,27 @@ function renderDashboard() {
   const dr = safeGet('donatur_rutin');
   const pr = safeGet('prospek_rutin');
   const ki = safeGet('kotak_infaq');
-  const kcs = safeGet('kcs_data');
+  const scs = safeGet('scs_santri');
   const dw = safeGet('donatur_waqaf');
   const wp = safeGet('waqaf_program');
   const bayar = safeGet('pembayaran_rutin');
   const ambilKI = safeGet('pengambilan_kotak');
-  const ambilKCS = safeGet('kcs_pengambilan');
+  const scsBayar = safeGet('scs_pembayaran');
 
   // Hitung semua pendapatan
   const totalDonasi = dr.filter(d=>d.status==='aktif').reduce((s,d)=>s+(+d.nominal||0),0);
   const totalKI = ki.filter(k=>k.status==='aktif').reduce((s,k)=>s+(+k.nominal_terakhir||0),0);
-  const totalKCS = kcs.filter(k=>k.status==='aktif').reduce((s,k)=>s+(+k.nominal_terakhir||0),0);
+  const totalSCS = scsBayar.reduce((s,b)=>s+(+b.nominal||0),0);
   const totalWaqaf = dw.reduce((s,d)=>s+(+d.nominal||0),0);
-  const totalSemua = totalDonasi + totalKI + totalKCS + totalWaqaf;
+  const totalSemua = totalDonasi + totalKI + totalSCS + totalWaqaf;
 
   // Bulan ini
   const bulanIni = new Date().toISOString().slice(0,7);
   const bayarBulanIni = bayar.filter(p=>p.tgl_bayar?.startsWith(bulanIni)).reduce((s,p)=>s+(+p.nominal||0),0);
   const ambilKIBulanIni = ambilKI.filter(a=>a.tgl_ambil?.startsWith(bulanIni)).reduce((s,a)=>s+(+a.nominal||0),0);
-  const ambilKCSBulanIni = ambilKCS.filter(a=>a.tgl_ambil?.startsWith(bulanIni)).reduce((s,a)=>s+(+a.nominal||0),0);
+  const scsBulanIni = scsBayar.filter(b=>b.tgl_bayar?.startsWith(bulanIni)).reduce((s,b)=>s+(+b.nominal||0),0);
   const waqafBulanIni = dw.filter(d=>d.tgl_donasi?.startsWith(bulanIni)&&d.status==='lunas').reduce((s,d)=>s+(+d.nominal||0),0);
-  const totalBulanIni = bayarBulanIni + ambilKIBulanIni + ambilKCSBulanIni + waqafBulanIni;
+  const totalBulanIni = bayarBulanIni + ambilKIBulanIni + scsBulanIni + waqafBulanIni;
 
   const bulanLabel = new Date().toLocaleDateString('id-ID',{month:'long',year:'numeric'});
 
@@ -67,7 +67,7 @@ function renderDashboard() {
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">💚 Donasi: ${rupiah(bayarBulanIni)}</span>
           <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">🗃️ Kotak: ${rupiah(ambilKIBulanIni)}</span>
-          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">📦 SCS: ${rupiah(ambilKCSBulanIni)}</span>
+          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">📦 SCS: ${rupiah(scsBulanIni)}</span>
           <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">🕌 Isidental: ${rupiah(waqafBulanIni)}</span>
         </div>
       </div>
@@ -79,7 +79,7 @@ function renderDashboard() {
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">💚 Rutin: ${rupiah(totalDonasi)}/bln</span>
           <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">🗃️ Kotak: ${rupiah(totalKI)}</span>
-          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">📦 SCS: ${rupiah(totalKCS)}</span>
+          <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">📦 SCS: ${rupiah(totalSCS)}</span>
           <span style="background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px">🕌 Isidental: ${rupiah(totalWaqaf)}</span>
         </div>
       </div>
@@ -106,9 +106,9 @@ function renderDashboard() {
       <div class="stat" style="cursor:pointer" onclick="location='kcs.html'">
         <div class="stat-ico ic-blue">📦</div>
         <div class="stat-body">
-          <div class="lbl">KCS Aktif</div>
-          <div class="val">${kcs.filter(k=>k.status==='aktif').length}</div>
-          <div class="sub rupiah">${rupiah(totalKCS)} terakhir</div>
+          <div class="lbl">SCS Aktif</div>
+          <div class="val">${scs.filter(s=>s.status==='aktif').length}</div>
+          <div class="sub rupiah">${rupiah(totalSCS)} sedekah</div>
         </div>
       </div>
       <div class="stat" style="cursor:pointer" onclick="location='waqaf.html'">
@@ -144,23 +144,44 @@ function renderDashboard() {
         </div>
       </div>
 
-      <!-- Kotak Infaq & KCS -->
+      <!-- Kotak Infaq & SCS -->
       <div class="card">
         <div class="card-head">
-          <div class="card-title">🗃️ Kotak Infaq & SCS</div>
+          <div class="card-title">🗃️ Kotak Infaq</div>
           <a href="kotak-infaq.html" class="btn btn-ghost btn-sm" style="font-size:11px">Lihat →</a>
         </div>
         <div class="tbl-wrap">
           <table>
             <thead><tr><th>Toko</th><th>Tipe</th><th>Terakhir</th></tr></thead>
             <tbody>
-              ${[...ki.filter(k=>k.status==='aktif').slice(0,3).map(k=>({...k,tipe:'KI'})),
-                 ...kcs.filter(k=>k.status==='aktif').slice(0,2).map(k=>({...k,tipe:'SCS'}))]
-                .map(k=>`<tr>
-                  <td style="font-size:12px;font-weight:600;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${k.nama_toko}</td>
-                  <td><span class="badge ${k.tipe==='SCS'?'b-blue':'b-orange'}" style="font-size:10px">${k.tipe}</span></td>
-                  <td class="rupiah" style="font-size:11px;color:#f97316">${rupiah(k.nominal_terakhir)}</td>
-                </tr>`).join('') || '<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--gray-400);font-size:12px">Belum ada data</td></tr>'}
+              ${ki.filter(k=>k.status==='aktif').slice(0,5).map(k=>`<tr>
+                <td style="font-size:12px;font-weight:600;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${k.nama_toko}</td>
+                <td><span class="badge b-orange" style="font-size:10px">KI</span></td>
+                <td class="rupiah" style="font-size:11px;color:#f97316">${rupiah(k.nominal_terakhir)}</td>
+              </tr>`).join('') || '<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--gray-400);font-size:12px">Belum ada data</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SCS Santri -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">📦 SCS - Santri Terbaru</div>
+          <a href="kcs.html" class="btn btn-ghost btn-sm" style="font-size:11px">Lihat →</a>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Nama</th><th>Kelas</th><th>Sedekah Terbaru</th></tr></thead>
+            <tbody>
+              ${scs.slice(0,5).map(s=>{
+                const lastBayar = scsBayar.filter(b=>b.santri_id===s.id).sort((a,b)=>new Date(b.tgl_bayar)-new Date(a.tgl_bayar))[0];
+                return `<tr>
+                  <td style="font-size:12px;font-weight:600">${s.nama}</td>
+                  <td><span class="badge b-blue" style="font-size:10px">${s.kelas||'-'}</span></td>
+                  <td class="rupiah" style="font-size:11px;color:var(--success)">${lastBayar?rupiah(lastBayar.nominal):'—'}</td>
+                </tr>`;
+              }).join('') || '<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--gray-400);font-size:12px">Belum ada data</td></tr>'}
             </tbody>
           </table>
         </div>

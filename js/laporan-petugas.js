@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     DB.sync('pembayaran_rutin'),
     DB.sync('donatur_rutin'),
     DB.sync('pengambilan_kotak'),
-    DB.sync('kcs_pengambilan'),
+    DB.sync('scs_pembayaran'),
     DB.sync('donatur_waqaf'),
     DB.sync('waqaf_program'),
     DB.sync('prospek_kotak'),
@@ -71,15 +71,15 @@ window.renderPetugas = function() {
     });
   });
 
-  // 3. Pengambilan SCS
-  DB.get('kcs_pengambilan').forEach(a => {
-    if (!a.petugas) return;
-    const tgl = a.tgl_ambil || '';
+  // 3. Sedekah SCS
+  DB.get('scs_pembayaran').forEach(b => {
+    if (!b.petugas) return;
+    const tgl = b.tgl_bayar || '';
     if (!tgl.startsWith(periode)) return;
     semua.push({
-      petugas: a.petugas, jenis: 'SCS',
-      nama: a.nama_toko || '-',
-      nominal: +a.nominal||0, tgl, ket: a.nama_kotak||'-'
+      petugas: b.petugas, jenis: 'SCS',
+      nama: b.nama_santri || '-',
+      nominal: +b.nominal||0, tgl, ket: `${b.kelas||'-'} / ${b.halaqoh||'-'}`
     });
   });
 
