@@ -1,18 +1,20 @@
-﻿let pgSantri=1, pgBayarSCS=1, pgUstadz=1;
+﻿let pgSantri=1, pgBayarSCS=1, pgUstadz=1, pgBayarS3=1;
 const PS=15;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  loadSCSStats(); loadUstadz(); loadSantri(); loadBayarSCS();
+  loadSCSStats(); loadUstadz(); loadSantri(); loadBayarSCS(); loadBayarS3();
   initTabs('scsTabs', t => {
     if (t==='paneUstadz') loadUstadz();
     else if (t==='paneSantri') loadSantri();
-    else loadBayarSCS();
+    else if (t==='paneBayar') loadBayarSCS();
+    else if (t==='paneBayarS3') loadBayarS3();
   });
 
   document.getElementById('btnTambahSCS').addEventListener('click', () => {
     const tab = document.querySelector('#scsTabs .tab.active').dataset.target;
     if (tab==='paneUstadz') openModalUstadz();
     else if (tab==='paneSantri') openModalSantri();
+    else if (tab==='paneBayarS3') openModalBayarS3();
     else openModalBayarSCS();
   });
 
@@ -28,9 +30,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById(id)?.addEventListener('input', debounce(() => { pgBayarSCS=1; loadBayarSCS(); }));
     document.getElementById(id)?.addEventListener('change', () => { pgBayarSCS=1; loadBayarSCS(); });
   });
+  ['srBayarS3','flBulanBayarS3'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', debounce(() => { pgBayarS3=1; loadBayarS3(); }));
+    document.getElementById(id)?.addEventListener('change', () => { pgBayarS3=1; loadBayarS3(); });
+  });
 
-  await Promise.all([DB.sync('s3_ustadz'), DB.sync('scs_santri'), DB.sync('scs_pembayaran'), DB.sync('petugas')]);
-  loadSCSStats(); loadUstadz(); loadSantri(); loadBayarSCS(); loadFilterOptions();
+  await Promise.all([DB.sync('s3_ustadz'), DB.sync('s3_pembayaran'), DB.sync('scs_santri'), DB.sync('scs_pembayaran'), DB.sync('petugas')]);
+  loadSCSStats(); loadUstadz(); loadSantri(); loadBayarSCS(); loadBayarS3(); loadFilterOptions();
 });
 
 function loadFilterOptions() {
@@ -49,15 +55,17 @@ function loadSCSStats() {
   const ustadz = DB.get('s3_ustadz');
   const santri = DB.get('scs_santri');
   const bayar = DB.get('scs_pembayaran');
+  const bayarS3 = DB.get('s3_pembayaran');
   const bulanIni = new Date().toISOString().slice(0,7);
-  const totalBulanIni = bayar.filter(b=>b.tgl_bayar?.startsWith(bulanIni)).reduce((s,b)=>s+(+b.nominal||0),0);
-  const totalSemua = bayar.reduce((s,b)=>s+(+b.nominal||0),0);
+  const totalBulanIni = bayar.filter(b=>b.tgl_bayar?.startsWith(bulanIni)).reduce((s,b)=>s+(+b.nominal||0),0)
+    + bayarS3.filter(b=>b.tgl_bayar?.startsWith(bulanIni)).reduce((s,b)=>s+(+b.nominal||0),0);
+  const totalSemua = bayar.reduce((s,b)=>s+(+b.nominal||0),0) + bayarS3.reduce((s,b)=>s+(+b.nominal||0),0);
   const kelas = [...new Set(santri.map(s=>s.kelas).filter(Boolean))];
 
   document.getElementById('scsStats').innerHTML = `
     <div class="stat"><div class="stat-ico ic-purple">👨‍🏫</div><div class="stat-body"><div class="lbl">Ustadz/Ustadzah</div><div class="val">${ustadz.filter(u=>u.status==='aktif').length}</div><div class="sub">${ustadz.length} terdaftar</div></div></div>
     <div class="stat"><div class="stat-ico ic-blue">🎓</div><div class="stat-body"><div class="lbl">Total Santri</div><div class="val">${santri.filter(s=>s.status==='aktif').length}</div><div class="sub">${santri.length} terdaftar · ${kelas.length} kelas</div></div></div>
-    <div class="stat"><div class="stat-ico ic-green">💰</div><div class="stat-body"><div class="lbl">Sedekah Bulan Ini</div><div class="val rupiah" style="font-size:14px">${rupiah(totalBulanIni)}</div><div class="sub">${bayar.filter(b=>b.tgl_bayar?.startsWith(bulanIni)).length} transaksi</div></div></div>
+    <div class="stat"><div class="stat-ico ic-green">💰</div><div class="stat-body"><div class="lbl">Sedekah Bulan Ini</div><div class="val rupiah" style="font-size:14px">${rupiah(totalBulanIni)}</div></div></div>
     <div class="stat"><div class="stat-ico ic-orange">📊</div><div class="stat-body"><div class="lbl">Total Sedekah</div><div class="val rupiah" style="font-size:14px">${rupiah(totalSemua)}</div></div></div>
   `;
 }
@@ -81,6 +89,7 @@ function loadUstadz() {
       <td class="td-mono">${u.hp||'-'}</td>
       <td>${badge(u.status)}</td>
       <td><div class="td-actions">
+        <button class="btn btn-success btn-sm" onclick="openModalBayarS3('${u.id}')">💰 Catat</button>
         <button class="btn btn-ghost btn-sm btn-icon" onclick="openModalUstadz('${u.id}')">✏️</button>
         <button class="btn btn-ghost btn-sm btn-icon" onclick="hapusUstadz('${u.id}')">🗑️</button>
       </div></td>
@@ -141,6 +150,59 @@ window.hapusUstadz = async function(id) {
   if (!await DB.delete('s3_ustadz',id)) { toast('Gagal menghapus','err'); return; }
   await DB.sync('s3_ustadz', {force:true});
   toast('Dihapus','ok'); loadSCSStats(); loadUstadz();
+};
+
+// Modal catat sedekah ustadz/ustadzah
+window.openModalBayarS3 = function(ustadzId=null) {
+  const list = DB.get('s3_ustadz').filter(u=>u.status==='aktif');
+  const sel = ustadzId ? list.find(u=>u.id===ustadzId) : null;
+  const opts = list.map(u=>`<option value="${u.id}" ${u.id===ustadzId?'selected':''}>${u.nama}${u.panggilan?' ('+u.panggilan+')':''}</option>`).join('');
+  document.body.insertAdjacentHTML('beforeend', `<div class="overlay" id="ovBayarS3">
+    <div class="modal">
+      <div class="modal-head"><h3>💰 Catat Sedekah S3</h3><button class="modal-close" onclick="closeModal('ovBayarS3')">✕</button></div>
+      <div class="modal-body">
+        <div class="fgrid">
+          <div class="fg fcol2"><label class="flabel">Ustadz/Ustadzah *</label>
+            <select id="bS3Ustadz" class="fctrl">
+              <option value="">-- Pilih --</option>${opts}
+            </select>
+          </div>
+          <div class="fg"><label class="flabel">Nominal (Rp) *</label><input type="number" id="bS3Nominal" class="fctrl" placeholder="0"></div>
+          <div class="fg"><label class="flabel">Tanggal *</label><input type="date" id="bS3Tgl" class="fctrl" value="${new Date().toISOString().split('T')[0]}"></div>
+          <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('bS3Petugas','')}</div>
+          <div class="fg fcol2"><label class="flabel">Catatan</label><input id="bS3Catatan" class="fctrl" placeholder="Opsional"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-outline" onclick="closeModal('ovBayarS3')">Batal</button>
+        <button class="btn btn-primary" onclick="saveBayarS3()">Simpan</button>
+      </div>
+    </div>
+  </div>`);
+  initPetugasSelect('bS3Petugas');
+};
+
+window.saveBayarS3 = async function() {
+  const ustadzId = document.getElementById('bS3Ustadz').value;
+  const nominal = +document.getElementById('bS3Nominal').value;
+  const tglBayar = document.getElementById('bS3Tgl').value;
+  if (!ustadzId || !nominal || !tglBayar) { toast('Semua field wajib diisi','warn'); return; }
+  const ustadz = DB.get('s3_ustadz').find(u=>u.id===ustadzId);
+  const btn = document.querySelector('#ovBayarS3 .btn-primary');
+  if (btn) { btn.disabled=true; btn.textContent='Menyimpan...'; }
+  const payload = {
+    ustadz_id: ustadzId,
+    nama_ustadz: ustadz?.nama||'',
+    amanah: ustadz?.amanah||'',
+    nominal, tgl_bayar: tglBayar,
+    petugas: getPetugas('bS3Petugas'),
+    catatan: document.getElementById('bS3Catatan').value.trim()
+  };
+  const r = await DB.insert('s3_pembayaran', payload);
+  if (!r) { toast('Gagal menyimpan','err'); return; }
+  await DB.sync('s3_pembayaran', {force:true});
+  toast('Sedekah S3 berhasil dicatat','ok');
+  closeModal('ovBayarS3'); loadSCSStats();
 };
 
 // Import Ustadz
@@ -392,6 +454,38 @@ window.hapusBayarSCS = async function(id) {
   if (!await DB.delete('scs_pembayaran',id)) { toast('Gagal menghapus','err'); return; }
   await DB.sync('scs_pembayaran', {force:true});
   toast('Dihapus','ok'); loadSCSStats(); loadBayarSCS();
+};
+
+// ===== RIWAYAT SEDEKAH S3 (USTADZ/USTADZAH) =====
+function loadBayarS3() {
+  let data = DB.get('s3_pembayaran');
+  const sr = document.getElementById('srBayarS3')?.value.toLowerCase()||'';
+  const bln = document.getElementById('flBulanBayarS3')?.value||'';
+  if (sr) data = data.filter(b=>(b.nama_ustadz||'').toLowerCase().includes(sr));
+  if (bln) data = data.filter(b=>b.tgl_bayar?.slice(5,7)===bln);
+  data.sort((a,b)=>new Date(b.tgl_bayar)-new Date(a.tgl_bayar));
+  document.getElementById('cntBayarS3').textContent = data.length;
+  const { items, total } = paginate(data, pgBayarS3, PS);
+  document.getElementById('tblBayarS3').innerHTML = items.length ? items.map(b=>`
+    <tr>
+      <td style="font-weight:600">${b.nama_ustadz||'-'}</td>
+      <td style="font-size:12px">${b.amanah||'-'}</td>
+      <td class="rupiah" style="font-weight:700;color:var(--success)">${rupiah(b.nominal)}</td>
+      <td style="font-size:12px">${tgl(b.tgl_bayar)}</td>
+      <td style="font-size:12px">${b.petugas||'-'}</td>
+      <td style="font-size:12px;color:var(--gray-500)">${b.catatan||'-'}</td>
+      <td><button class="btn btn-ghost btn-sm btn-icon" onclick="hapusBayarS3('${b.id}')">🗑️</button></td>
+    </tr>`).join('')
+  : `<tr><td colspan="7"><div class="empty"><div class="ei">💰</div><div class="et">Belum ada riwayat sedekah S3</div></div></td></tr>`;
+  renderPagination('pagBayarS3', total, pgBayarS3, PS, 'goPgBayarS3');
+}
+window.goPgBayarS3 = p => { pgBayarS3=p; loadBayarS3(); };
+
+window.hapusBayarS3 = async function(id) {
+  if (!await confirmDel()) return;
+  if (!await DB.delete('s3_pembayaran',id)) { toast('Gagal menghapus','err'); return; }
+  await DB.sync('s3_pembayaran', {force:true});
+  toast('Dihapus','ok'); loadSCSStats(); loadBayarS3();
 };
 
 // ===== IMPORT EXCEL =====

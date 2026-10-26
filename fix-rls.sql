@@ -88,3 +88,18 @@ ALTER TABLE s3_ustadz DISABLE ROW LEVEL SECURITY;
 GRANT ALL ON scs_santri TO anon;
 GRANT ALL ON scs_pembayaran TO anon;
 GRANT ALL ON s3_ustadz TO anon;
+
+-- s3_pembayaran (sedekah ustadz/ustadzah)
+CREATE TABLE IF NOT EXISTS s3_pembayaran (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  ustadz_id UUID REFERENCES s3_ustadz(id) ON DELETE CASCADE,
+  nama_ustadz TEXT,
+  amanah TEXT,
+  nominal BIGINT DEFAULT 0,
+  tgl_bayar DATE NOT NULL,
+  petugas TEXT,
+  catatan TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE s3_pembayaran DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON s3_pembayaran TO anon;

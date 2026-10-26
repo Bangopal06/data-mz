@@ -51,7 +51,8 @@
           <div id="scsTabs" class="tabs" style="border-bottom:1px solid var(--gray-200);margin-bottom:0;flex:1">
             <button class="tab active" data-target="paneUstadz">👨‍🏫 Ustadz/Ustadzah <span class="cnt" id="cntUstadz">0</span></button>
             <button class="tab" data-target="paneSantri">🎓 Data Santri <span class="cnt" id="cntSantri">0</span></button>
-            <button class="tab" data-target="paneBayar">💰 Riwayat Sedekah <span class="cnt" id="cntBayar">0</span></button>
+            <button class="tab" data-target="paneBayar">💰 Riwayat Sedekah Santri <span class="cnt" id="cntBayar">0</span></button>
+            <button class="tab" data-target="paneBayarS3">💰 Riwayat Sedekah S3 <span class="cnt" id="cntBayarS3">0</span></button>
           </div>
           <div style="padding:12px 0 12px 16px;display:flex;gap:8px">
             <button class="btn btn-outline btn-sm" onclick="exportSCS()">⬇️ Export</button>
@@ -124,6 +125,29 @@
             </table>
           </div>
           <div class="card-foot" id="pagBayarSCS"></div>
+        </div>
+
+        <!-- Riwayat Sedekah S3 Ustadz -->
+        <div id="paneBayarS3" class="tab-pane" style="padding:16px 20px">
+          <div class="filters mb3">
+            <input type="text" id="srBayarS3" class="inp" placeholder="🔍 Cari nama ustadz...">
+            <select id="flBulanBayarS3" class="sel">
+              <option value="">Semua Bulan</option>
+              <option value="01">Januari</option><option value="02">Februari</option>
+              <option value="03">Maret</option><option value="04">April</option>
+              <option value="05">Mei</option><option value="06">Juni</option>
+              <option value="07">Juli</option><option value="08">Agustus</option>
+              <option value="09">September</option><option value="10">Oktober</option>
+              <option value="11">November</option><option value="12">Desember</option>
+            </select>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Nama Ustadz/Ustadzah</th><th>Amanah</th><th>Nominal</th><th>Tanggal</th><th>Petugas</th><th>Catatan</th><th>Aksi</th></tr></thead>
+              <tbody id="tblBayarS3"></tbody>
+            </table>
+          </div>
+          <div class="card-foot" id="pagBayarS3"></div>
         </div>
       </div>
     </div>
