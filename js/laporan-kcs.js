@@ -1,172 +1,155 @@
-﻿const BULAN_NAMA = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+﻿const BULAN_NAMA_SCS = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
 document.addEventListener('DOMContentLoaded', async () => {
-  initFilter();
+  initFilterSCS();
   renderLapKCS();
-  await Promise.all([DB.sync('kcs_data'), DB.sync('kcs_pengambilan')]);
-  initFilter();
+  await Promise.all([DB.sync('scs_santri'), DB.sync('scs_pembayaran')]);
+  initFilterSCS();
   renderLapKCS();
 });
 
-function initFilter() {
+function initFilterSCS() {
   const now = new Date();
   const tahun = now.getFullYear();
   document.getElementById('lkTahun').innerHTML =
     [tahun, tahun-1, tahun-2].map(t=>`<option value="${t}" ${t===tahun?'selected':''}>${t}</option>`).join('');
   document.getElementById('lkBulan').value = String(now.getMonth()+1).padStart(2,'0');
 
-  const kcsData = DB.get('kcs_data');
-  const kota = [...new Set(kcsData.map(k=>k.kota).filter(Boolean))].sort();
-  const petugas = [...new Set(kcsData.map(k=>k.petugas).filter(Boolean))].sort();
-  document.getElementById('lkKota').innerHTML = '<option value="">Semua Kota</option>' + kota.map(k=>`<option>${k}</option>`).join('');
-  document.getElementById('lkPetugas').innerHTML = '<option value="">Semua Petugas</option>' + petugas.map(p=>`<option>${p}</option>`).join('');
+  const santri = DB.get('scs_santri');
+  const kelas = [...new Set(santri.map(s=>s.kelas).filter(Boolean))].sort();
+  const halaqoh = [...new Set(santri.map(s=>s.halaqoh).filter(Boolean))].sort();
+  document.getElementById('lkKelas').innerHTML = '<option value="">Semua Kelas</option>' + kelas.map(k=>`<option value="${k}">${k}</option>`).join('');
+  document.getElementById('lkHalaqoh').innerHTML = '<option value="">Semua Halaqoh</option>' + halaqoh.map(h=>`<option value="${h}">${h}</option>`).join('');
 }
 
 window.renderLapKCS = function() {
-  const bulan = document.getElementById('lkBulan').value;
-  const tahun = document.getElementById('lkTahun').value;
-  const kota = document.getElementById('lkKota').value;
-  const petugas = document.getElementById('lkPetugas').value;
-  const periode = `${tahun}-${bulan}`;
+  const bulan  = document.getElementById('lkBulan').value;
+  const tahun  = document.getElementById('lkTahun').value;
+  const flKelas = document.getElementById('lkKelas').value;
+  const flHal   = document.getElementById('lkHalaqoh').value;
+  const periode = bulan ? `${tahun}-${bulan}` : tahun;
 
-  let kcsAktif = DB.get('kcs_data').filter(k=>k.status==='aktif');
-  if (kota) kcsAktif = kcsAktif.filter(k=>k.kota===kota);
-  if (petugas) kcsAktif = kcsAktif.filter(k=>k.petugas===petugas);
+  let santri = DB.get('scs_santri').filter(s=>s.status==='aktif');
+  if (flKelas) santri = santri.filter(s=>s.kelas===flKelas);
+  if (flHal) santri = santri.filter(s=>s.halaqoh===flHal);
+  const santriIds = new Set(santri.map(s=>s.id));
 
-  let ambilBulan = DB.get('kcs_pengambilan').filter(a=>a.tgl_ambil?.startsWith(periode));
-  const sudahIds = new Set(ambilBulan.map(a=>a.kcs_id));
-  const sudah = kcsAktif.filter(k=>sudahIds.has(k.id));
-  const belum = kcsAktif.filter(k=>!sudahIds.has(k.id));
-  const totalSudah = ambilBulan.reduce((s,a)=>s+(+a.nominal||0),0);
+  let bayar = DB.get('scs_pembayaran').filter(b=>(b.tgl_bayar||'').startsWith(periode));
+  bayar = bayar.filter(b=>santriIds.has(b.santri_id));
+  bayar.sort((a,b)=>new Date(b.tgl_bayar)-new Date(a.tgl_bayar));
 
-  // Stats
+  const totalSedekah = bayar.reduce((s,b)=>s+(+b.nominal||0),0);
+  const santriSetor = new Set(bayar.map(b=>b.santri_id)).size;
+
+  // STATS
   document.getElementById('lkStats').innerHTML = `
-    <div class="stat"><div class="stat-ico ic-blue">📅</div><div class="stat-body"><div class="lbl">Periode</div><div class="val" style="font-size:14px">${BULAN_NAMA[+bulan]} ${tahun}</div></div></div>
-    <div class="stat"><div class="stat-ico ic-green">✅</div><div class="stat-body"><div class="lbl">Sudah Diambil</div><div class="val">${sudah.length}</div><div class="sub">${ambilBulan.length}x ambil</div></div></div>
-    <div class="stat"><div class="stat-ico ic-red">⏳</div><div class="stat-body"><div class="lbl">Belum Diambil</div><div class="val">${belum.length}</div></div></div>
-    <div class="stat"><div class="stat-ico ic-orange">💰</div><div class="stat-body"><div class="lbl">Total Terkumpul</div><div class="val rupiah" style="font-size:15px">${rupiah(totalSudah)}</div></div></div>
+    <div class="stat"><div class="stat-ico ic-blue">🎓</div><div class="stat-body"><div class="lbl">Total Santri</div><div class="val">${santri.length}</div></div></div>
+    <div class="stat"><div class="stat-ico ic-green">✅</div><div class="stat-body"><div class="lbl">Sudah Setor</div><div class="val">${santriSetor}</div><div class="sub">${santri.length-santriSetor} belum setor</div></div></div>
+    <div class="stat"><div class="stat-ico ic-orange">💰</div><div class="stat-body"><div class="lbl">Total Sedekah</div><div class="val rupiah" style="font-size:14px">${rupiah(totalSedekah)}</div></div></div>
+    <div class="stat"><div class="stat-ico ic-purple">📊</div><div class="stat-body"><div class="lbl">Rata-rata/Santri</div><div class="val rupiah" style="font-size:14px">${santriSetor?rupiah(Math.round(totalSedekah/santriSetor)):'Rp 0'}</div></div></div>
   `;
 
-  document.getElementById('lkCntSudah').textContent = sudah.length;
-  document.getElementById('lkCntBelum').textContent = belum.length;
-
-  // Tabel sudah diambil
-  const ambilSorted = [...ambilBulan].sort((a,b)=>new Date(b.tgl_ambil)-new Date(a.tgl_ambil));
-  document.getElementById('lkTblSudah').innerHTML = ambilSorted.length ? ambilSorted.map(a=>{
-    const k = kcsAktif.find(x=>x.id===a.kcs_id)||{};
+  // REKAP PER KELAS
+  const kelasList = [...new Set(santri.map(s=>s.kelas).filter(Boolean))].sort();
+  let grandSantri=0, grandSetor=0, grandTotal=0;
+  document.getElementById('lkTblKelas').innerHTML = kelasList.length ? kelasList.map(k=>{
+    const sk = santri.filter(s=>s.kelas===k);
+    const bk = bayar.filter(b=>b.kelas===k);
+    const setor = new Set(bk.map(b=>b.santri_id)).size;
+    const total = bk.reduce((s,b)=>s+(+b.nominal||0),0);
+    const rata = setor ? Math.round(total/setor) : 0;
+    grandSantri+=sk.length; grandSetor+=setor; grandTotal+=total;
     return `<tr>
-      <td class="td-name">${a.nama_kotak||'-'}</td>
-      <td style="font-size:12px">${a.nama_toko||'-'}</td>
-      <td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis">${k.alamat||'-'}</td>
-      <td style="font-size:12px">${k.kota||'-'}</td>
-      <td style="font-size:12px;white-space:nowrap">${tgl(a.tgl_ambil)}</td>
-      <td class="rupiah" style="font-weight:700;color:#f97316">${rupiah(a.nominal)}</td>
-      <td style="font-size:12px">${a.petugas||k.petugas||'-'}</td>
-      <td style="font-size:12px;color:var(--gray-500)">${a.catatan||'-'}</td>
+      <td><span class="badge b-blue" style="font-size:12px">${k}</span></td>
+      <td style="text-align:center;font-weight:600">${sk.length}</td>
+      <td style="text-align:center;color:var(--success);font-weight:600">${setor}</td>
+      <td style="text-align:center;color:${sk.length-setor>0?'var(--danger)':'var(--gray-400)'}">${sk.length-setor}</td>
+      <td class="rupiah" style="font-weight:700;color:var(--success)">${total?rupiah(total):'—'}</td>
+      <td class="rupiah" style="color:var(--gray-500)">${rata?rupiah(rata):'—'}</td>
     </tr>`;
-  }).join('') : `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--gray-400)">Belum ada pengambilan bulan ini</td></tr>`;
+  }).join('') : `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--gray-400)">Tidak ada data</td></tr>`;
+  document.getElementById('lkFootKelas').innerHTML = kelasList.length ? `
+    <tr><td>TOTAL</td><td style="text-align:center">${grandSantri}</td><td style="text-align:center">${grandSetor}</td>
+    <td style="text-align:center">${grandSantri-grandSetor}</td>
+    <td class="rupiah">${rupiah(grandTotal)}</td>
+    <td class="rupiah">${grandSetor?rupiah(Math.round(grandTotal/grandSetor)):'—'}</td></tr>` : '';
 
-  document.getElementById('lkFootSudah').innerHTML = ambilSorted.length ? `
-    <tr><td colspan="5" style="padding:10px 14px">TOTAL (${ambilSorted.length} pengambilan)</td>
-    <td class="rupiah" style="padding:10px 14px;color:#f97316">${rupiah(totalSudah)}</td>
-    <td colspan="2"></td></tr>` : '';
-
-  // Tabel belum diambil
-  document.getElementById('lkTblBelum').innerHTML = belum.length ? belum.map(k=>{
-    const hari = k.tgl_ambil ? Math.floor((new Date()-new Date(k.tgl_ambil))/86400000) : null;
-    const terlambat = hari&&((k.frekuensi==='mingguan'&&hari>7)||(k.frekuensi==='dua_mingguan'&&hari>14)||(k.frekuensi==='bulanan'&&hari>30));
-    return `<tr style="${terlambat?'background:#fef9f9':''}">
-      <td class="td-name">${k.nama_kotak}${terlambat?' <span class="badge b-red" style="font-size:10px">Terlambat!</span>':''}</td>
-      <td style="font-size:12px">${k.nama_toko}</td>
-      <td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis">${k.alamat||'-'}</td>
-      <td style="font-size:12px">${k.kota||'-'}</td>
-      <td>${badge(k.frekuensi||'bulanan')}</td>
-      <td style="font-size:12px">${k.tgl_ambil?tgl(k.tgl_ambil):'<span style="color:var(--gray-300)">Belum pernah</span>'}</td>
-      <td class="rupiah" style="font-size:12px">${rupiah(k.nominal_terakhir||0)}</td>
-      <td style="font-size:12px">${k.petugas||'-'}</td>
+  // REKAP PER HALAQOH
+  const halList = [...new Set(santri.map(s=>s.halaqoh).filter(Boolean))].sort();
+  let grandHSantri=0, grandHTot=0;
+  document.getElementById('lkTblHalaqoh').innerHTML = halList.length ? halList.map(h=>{
+    const sh = santri.filter(s=>s.halaqoh===h);
+    const bh = bayar.filter(b=>b.halaqoh===h);
+    const setor = new Set(bh.map(b=>b.santri_id)).size;
+    const total = bh.reduce((s,b)=>s+(+b.nominal||0),0);
+    grandHSantri+=sh.length; grandHTot+=total;
+    return `<tr>
+      <td style="font-weight:600">${h}</td>
+      <td style="text-align:center">${sh.length}</td>
+      <td style="text-align:center;color:var(--success)">${setor}/${sh.length}</td>
+      <td class="rupiah" style="font-weight:700;color:var(--success)">${total?rupiah(total):'—'}</td>
     </tr>`;
-  }).join('') : `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--success)">🎉 Semua KCS sudah diambil!</td></tr>`;
+  }).join('') : `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--gray-400)">Tidak ada data</td></tr>`;
+  document.getElementById('lkFootHalaqoh').innerHTML = halList.length ? `
+    <tr><td>TOTAL</td><td style="text-align:center">${grandHSantri}</td><td></td>
+    <td class="rupiah">${rupiah(grandHTot)}</td></tr>` : '';
 
-  const totalBelum = belum.reduce((s,k)=>s+(+k.nominal_terakhir||0),0);
-  document.getElementById('lkFootBelum').innerHTML = belum.length ? `
-    <tr><td colspan="6" style="padding:10px 14px">ESTIMASI BELUM DIAMBIL (${belum.length} KCS)</td>
-    <td class="rupiah" style="padding:10px 14px;color:var(--danger)">${rupiah(totalBelum)}</td>
-    <td></td></tr>` : '';
+  // RIWAYAT SEDEKAH
+  document.getElementById('lkCntBayar').textContent = bayar.length;
+  document.getElementById('lkTblBayar').innerHTML = bayar.length ? bayar.map(b=>`<tr>
+    <td style="font-weight:600">${b.nama_santri||'-'}</td>
+    <td><span class="badge b-blue" style="font-size:11px">${b.kelas||'-'}</span></td>
+    <td style="font-size:12px">${b.halaqoh||'-'}</td>
+    <td class="rupiah" style="font-weight:700;color:var(--success)">${rupiah(b.nominal)}</td>
+    <td style="font-size:12px">${tgl(b.tgl_bayar)}</td>
+    <td style="font-size:12px">${b.petugas||'-'}</td>
+    <td style="font-size:12px;color:var(--gray-500)">${b.catatan||'-'}</td>
+  </tr>`).join('') : `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--gray-400)">Tidak ada riwayat sedekah</td></tr>`;
+  const totBayar = bayar.reduce((s,b)=>s+(+b.nominal||0),0);
+  document.getElementById('lkFootBayar').innerHTML = bayar.length ? `
+    <tr><td colspan="3">TOTAL (${bayar.length} transaksi)</td>
+    <td class="rupiah">${rupiah(totBayar)}</td><td colspan="3"></td></tr>` : '';
 
-  // Rekap per KCS
-  const rekapList = kcsAktif.map(k=>{
-    const ambilK = ambilBulan.filter(a=>a.kcs_id===k.id);
-    return {...k, jmlAmbil:ambilK.length, totalBulan:ambilK.reduce((s,a)=>s+(+a.nominal||0),0), sudah:ambilK.length>0};
-  }).sort((a,b)=>b.totalBulan-a.totalBulan);
-
-  const grandTotal = rekapList.reduce((s,k)=>s+k.totalBulan,0);
-  document.getElementById('lkTblRekap').innerHTML = rekapList.map(k=>`<tr>
-    <td class="td-name">${k.nama_kotak}</td>
-    <td style="font-size:12px">${k.nama_toko}</td>
-    <td style="font-size:12px">${k.kota||'-'}</td>
-    <td style="text-align:center;font-weight:600">${k.jmlAmbil>0?k.jmlAmbil+'x':'—'}</td>
-    <td class="rupiah" style="font-weight:700;color:${k.totalBulan?'#f97316':'var(--gray-400)'}">
-      ${k.totalBulan?rupiah(k.totalBulan):'—'}</td>
-    <td>${k.sudah?'<span class="badge b-green">✓ Sudah</span>':'<span class="badge b-red">Belum</span>'}</td>
-  </tr>`).join('');
-
-  document.getElementById('lkFootRekap').innerHTML = `
-    <tr><td colspan="3" style="padding:10px 14px">TOTAL (${kcsAktif.length} KCS)</td>
-    <td style="padding:10px 14px;text-align:center">${ambilBulan.length}x</td>
-    <td class="rupiah" style="padding:10px 14px;color:#f97316">${rupiah(grandTotal)}</td>
-    <td style="padding:10px 14px">${sudah.length}/${kcsAktif.length} diambil</td></tr>`;
-
-  // Rekap bulanan
-  const ambilAll = DB.get('kcs_pengambilan').filter(a=>a.tgl_ambil?.startsWith(tahun));
-  let grandBulan = 0;
+  // REKAP BULANAN
+  const allBayar = DB.get('scs_pembayaran').filter(b=>(b.tgl_bayar||'').startsWith(tahun));
+  let grandBulan=0, grandBJml=0;
   const bRows = Array.from({length:12},(_,idx)=>{
     const mb = String(idx+1).padStart(2,'0');
-    const ambilMb = ambilAll.filter(a=>a.tgl_ambil?.slice(5,7)===mb);
-    const total = ambilMb.reduce((s,a)=>s+(+a.nominal||0),0);
-    const diambil = new Set(ambilMb.map(a=>a.kcs_id)).size;
-    const belumMb = kcsAktif.length - diambil;
-    grandBulan += total;
+    const bm = allBayar.filter(b=>b.tgl_bayar?.slice(5,7)===mb);
+    const total = bm.reduce((s,b)=>s+(+b.nominal||0),0);
+    const unik = new Set(bm.map(b=>b.santri_id)).size;
+    grandBulan+=total; grandBJml+=bm.length;
     const isNow = new Date().getMonth()===idx && String(new Date().getFullYear())===tahun;
-    return `<tr style="${isNow?'background:#fff7ed;font-weight:600':''}">
-      <td>${BULAN_NAMA[idx+1]} ${tahun}${isNow?' 🔵':''}</td>
-      <td style="text-align:center">${ambilMb.length}x</td>
-      <td style="text-align:center;color:var(--success);font-weight:600">${diambil}</td>
-      <td style="text-align:center;color:${belumMb?'var(--danger)':'var(--gray-400)'}">${belumMb}</td>
-      <td class="rupiah" style="font-weight:700;color:${total?'#f97316':'var(--gray-400)'}">
-        ${total?rupiah(total):'—'}</td>
-      <td class="rupiah" style="color:var(--gray-500)">${diambil?rupiah(Math.round(total/diambil)):'—'}</td>
+    return `<tr style="${isNow?'background:#f0fdf4;font-weight:600':''}">
+      <td>${BULAN_NAMA_SCS[idx+1]} ${tahun}${isNow?' 🔵':''}</td>
+      <td style="text-align:center">${bm.length||'—'}</td>
+      <td style="text-align:center">${unik||'—'}</td>
+      <td class="rupiah" style="font-weight:700;color:${total?'var(--success)':'var(--gray-400)'}">${total?rupiah(total):'—'}</td>
+      <td class="rupiah" style="color:var(--gray-500)">${unik?rupiah(Math.round(total/unik)):'—'}</td>
     </tr>`;
   });
   document.getElementById('lkTblBulanan').innerHTML = bRows.join('');
   document.getElementById('lkFootBulanan').innerHTML = `
     <tr style="background:var(--gray-800);color:white">
       <td style="padding:10px 14px">TOTAL ${tahun}</td>
-      <td style="padding:10px 14px;text-align:center">${ambilAll.length}x</td>
-      <td colspan="2" style="padding:10px 14px;text-align:center">${kcsAktif.length} KCS aktif</td>
+      <td style="padding:10px 14px;text-align:center">${grandBJml}</td>
+      <td style="padding:10px 14px"></td>
       <td class="rupiah" style="padding:10px 14px">${rupiah(grandBulan)}</td>
       <td style="padding:10px 14px"></td>
     </tr>`;
 };
 
-window.exportLapKCS = function() {
+window.exportLapSCS = function() {
   const bulan = document.getElementById('lkBulan').value;
   const tahun = document.getElementById('lkTahun').value;
-  const periode = `${tahun}-${bulan}`;
-  const kcsAktif = DB.get('kcs_data').filter(k=>k.status==='aktif');
-  const ambilBulan = DB.get('kcs_pengambilan').filter(a=>a.tgl_ambil?.startsWith(periode));
-  const sudahIds = new Set(ambilBulan.map(a=>a.kcs_id));
-
-  const rows = kcsAktif.map(k=>({
-    nama_kotak:k.nama_kotak, nama_toko:k.nama_toko, alamat:k.alamat||'',
-    kota:k.kota||'', petugas:k.petugas||'', frekuensi:k.frekuensi||'',
-    status_bulan_ini: sudahIds.has(k.id)?'Sudah Diambil':'Belum Diambil',
-    tgl_ambil_bulan_ini: ambilBulan.find(a=>a.kcs_id===k.id)?.tgl_ambil||'',
-    total_bulan_ini: ambilBulan.filter(a=>a.kcs_id===k.id).reduce((s,a)=>s+(+a.nominal||0),0)||''
+  const periode = bulan ? `${tahun}-${bulan}` : tahun;
+  const data = DB.get('scs_pembayaran').filter(b=>(b.tgl_bayar||'').startsWith(periode)).map(b=>({
+    nama_santri:b.nama_santri, kelas:b.kelas||'', halaqoh:b.halaqoh||'',
+    nominal:b.nominal, tgl_bayar:b.tgl_bayar, petugas:b.petugas||'', catatan:b.catatan||''
   }));
-
-  exportExcel(rows, `LaporanKCS_${BULAN_NAMA[+bulan]}_${tahun}`, 'Laporan KCS');
+  if (!data.length) { toast('Tidak ada data','warn'); return; }
+  exportExcel(data, `LaporanSCS_${bulan?BULAN_NAMA_SCS[+bulan]+'_':''}${tahun}`, 'SCS');
 };
 
-// Init localStorage
-if (localStorage.getItem('crm_kcs_data')===null) localStorage.setItem('crm_kcs_data','[]');
-if (localStorage.getItem('crm_kcs_pengambilan')===null) localStorage.setItem('crm_kcs_pengambilan','[]');
+// backward compat alias
+window.exportLapKCS = window.exportLapSCS;

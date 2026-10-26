@@ -46,3 +46,45 @@ CREATE TABLE IF NOT EXISTS petugas (
 );
 ALTER TABLE petugas DISABLE ROW LEVEL SECURITY;
 GRANT ALL ON petugas TO anon;
+
+-- =============================================
+-- SCS - Santri Cinta Sedekah (jalankan jika belum ada)
+-- =============================================
+CREATE TABLE IF NOT EXISTS scs_santri (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nama TEXT NOT NULL,
+  panggilan TEXT,
+  kelas TEXT,
+  halaqoh TEXT,
+  status TEXT DEFAULT 'aktif',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS scs_pembayaran (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  santri_id UUID REFERENCES scs_santri(id) ON DELETE CASCADE,
+  nama_santri TEXT,
+  kelas TEXT,
+  halaqoh TEXT,
+  nominal BIGINT DEFAULT 0,
+  tgl_bayar DATE NOT NULL,
+  petugas TEXT,
+  catatan TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS s3_ustadz (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nama TEXT NOT NULL,
+  panggilan TEXT,
+  amanah TEXT,
+  hp TEXT,
+  status TEXT DEFAULT 'aktif',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE scs_santri DISABLE ROW LEVEL SECURITY;
+ALTER TABLE scs_pembayaran DISABLE ROW LEVEL SECURITY;
+ALTER TABLE s3_ustadz DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON scs_santri TO anon;
+GRANT ALL ON scs_pembayaran TO anon;
+GRANT ALL ON s3_ustadz TO anon;
