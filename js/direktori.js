@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   await DB.sync('direktori');
   loadDirStats();
+  loadKategoriFilter();
   loadDir();
 });
 
