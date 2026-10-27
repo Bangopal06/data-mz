@@ -103,3 +103,27 @@ CREATE TABLE IF NOT EXISTS s3_pembayaran (
 );
 ALTER TABLE s3_pembayaran DISABLE ROW LEVEL SECURITY;
 GRANT ALL ON s3_pembayaran TO anon;
+
+-- Data Siswa
+CREATE TABLE IF NOT EXISTS data_siswa (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nama TEXT NOT NULL,
+  kelas TEXT,
+  alamat TEXT,
+  nama_ayah TEXT,
+  nama_ibu TEXT,
+  pekerjaan_ayah TEXT,
+  pekerjaan_ibu TEXT,
+  penghasilan_ayah BIGINT DEFAULT 0,
+  penghasilan_ibu BIGINT DEFAULT 0,
+  nama_instansi_ayah TEXT,
+  nama_instansi_ibu TEXT,
+  hp_ayah TEXT,
+  hp_ibu TEXT,
+  status TEXT DEFAULT 'aktif',
+  extra JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE data_siswa DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON data_siswa TO anon;
