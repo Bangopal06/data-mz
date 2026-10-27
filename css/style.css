@@ -43,13 +43,14 @@ a{text-decoration:none;color:inherit}
   display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;
 }
 .sidebar-brand .brand-icon{
-  width:72px;height:72px;
-  background:white;border-radius:12px;
+  width:100%;
+  background:none;border-radius:0;
   display:flex;align-items:center;justify-content:center;
-  padding:4px;
 }
 .sidebar-brand .brand-icon img{
-  width:100%;height:100%;object-fit:contain;border-radius:8px;
+  width:100%;max-width:170px;height:auto;object-fit:contain;
+  border-radius:6px;
+  background:white;padding:6px 8px;
 }
 .sidebar-brand h2{font-size:13px;font-weight:700;color:white;line-height:1.3;margin:0}
 .sidebar-brand p{font-size:11px;color:rgba(255,255,255,.45);margin:0}
