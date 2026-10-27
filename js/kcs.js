@@ -213,7 +213,8 @@ window.importUstadz = function() {
       <div class="modal-body">
         <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px">
           Format kolom: <code>nama, panggilan, amanah, hp</code><br>
-          File bisa punya judul di baris atas — sistem otomatis deteksi header.
+          File bisa punya judul di baris atas — sistem otomatis deteksi header.<br><br>
+          <button class="btn btn-outline btn-sm" onclick="downloadTemplateUstadz()">⬇️ Download Template</button>
         </div>
         <div class="fg"><label class="flabel">Pilih File Excel</label>
           <input type="file" id="fileUstadz" class="fctrl" accept=".xlsx,.xls,.csv">
@@ -226,6 +227,28 @@ window.importUstadz = function() {
       </div>
     </div>
   </div>`);
+};
+
+window.downloadTemplateUstadz = function() {
+  const headers = ['nama','panggilan','amanah','hp'];
+  const contoh = [
+    ['K.H. Ahmad Yunus, M.Pd.I','Abah Yai','Direktur','081234567890'],
+    ['Muji Haryono, SE.','Ust Muji','Sekertaris','082345678901'],
+    ['Dra. Ec. Ratnah Fairuz','Umi','General Manager','083456789012']
+  ];
+  if (typeof XLSX !== 'undefined') {
+    const ws = XLSX.utils.aoa_to_sheet([headers,...contoh]);
+    ws['!cols'] = [{wch:30},{wch:15},{wch:20},{wch:15}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Ustadz S3');
+    XLSX.writeFile(wb, 'Template_Ustadz_S3.xlsx');
+  } else {
+    const csv = [headers,...contoh].map(r=>r.map(c=>`"${c}"`).join(',')).join('\r\n');
+    const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='Template_Ustadz_S3.csv'; a.click();
+  }
+  toast('Template didownload','ok');
 };
 
 window.prosesImportUstadz = async function() {
