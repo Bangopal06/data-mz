@@ -8,7 +8,7 @@
     DB.sync('kotak_infaq'), DB.sync('scs_santri'),
     DB.sync('donatur_waqaf'), DB.sync('waqaf_program'),
     DB.sync('pembayaran_rutin'), DB.sync('pengambilan_kotak'),
-    DB.sync('scs_pembayaran')
+    DB.sync('scs_pembayaran'), DB.sync('s3_pembayaran')
   ]);
 
   // Re-render dengan data terbaru
@@ -37,11 +37,12 @@ function renderDashboard() {
   const bayar = safeGet('pembayaran_rutin');
   const ambilKI = safeGet('pengambilan_kotak');
   const scsBayar = safeGet('scs_pembayaran');
+  const s3Bayar = safeGet('s3_pembayaran');
 
   // Hitung semua pendapatan
   const totalDonasi = dr.filter(d=>d.status==='aktif').reduce((s,d)=>s+(+d.nominal||0),0);
   const totalKI = ki.filter(k=>k.status==='aktif').reduce((s,k)=>s+(+k.nominal_terakhir||0),0);
-  const totalSCS = scsBayar.reduce((s,b)=>s+(+b.nominal||0),0);
+  const totalSCS = scsBayar.reduce((s,b)=>s+(+b.nominal||0),0) + s3Bayar.reduce((s,b)=>s+(+b.nominal||0),0);
   const totalWaqaf = dw.reduce((s,d)=>s+(+d.nominal||0),0);
   const totalSemua = totalDonasi + totalKI + totalSCS + totalWaqaf;
 
@@ -49,7 +50,8 @@ function renderDashboard() {
   const bulanIni = new Date().toISOString().slice(0,7);
   const bayarBulanIni = bayar.filter(p=>p.tgl_bayar?.startsWith(bulanIni)).reduce((s,p)=>s+(+p.nominal||0),0);
   const ambilKIBulanIni = ambilKI.filter(a=>a.tgl_ambil?.startsWith(bulanIni)).reduce((s,a)=>s+(+a.nominal||0),0);
-  const scsBulanIni = scsBayar.filter(b=>b.tgl_bayar?.startsWith(bulanIni)).reduce((s,b)=>s+(+b.nominal||0),0);
+  const scsBulanIni = scsBayar.filter(b=>b.tgl_bayar?.startsWith(bulanIni)).reduce((s,b)=>s+(+b.nominal||0),0)
+    + s3Bayar.filter(b=>b.tgl_bayar?.startsWith(bulanIni)).reduce((s,b)=>s+(+b.nominal||0),0);
   const waqafBulanIni = dw.filter(d=>d.tgl_donasi?.startsWith(bulanIni)&&d.status==='lunas').reduce((s,d)=>s+(+d.nominal||0),0);
   const totalBulanIni = bayarBulanIni + ambilKIBulanIni + scsBulanIni + waqafBulanIni;
 

@@ -3,7 +3,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
   initFilterSCS();
   renderLapKCS();
-  await Promise.all([DB.sync('scs_santri'), DB.sync('scs_pembayaran')]);
+  await Promise.all([DB.sync('scs_santri'), DB.sync('scs_pembayaran'), DB.sync('s3_ustadz'), DB.sync('s3_pembayaran')]);
   initFilterSCS();
   renderLapKCS();
 });
@@ -38,15 +38,22 @@ window.renderLapKCS = function() {
   bayar = bayar.filter(b=>santriIds.has(b.santri_id));
   bayar.sort((a,b)=>new Date(b.tgl_bayar)-new Date(a.tgl_bayar));
 
+  // S3 Ustadz
+  const bayarS3 = DB.get('s3_pembayaran').filter(b=>(b.tgl_bayar||'').startsWith(periode));
+  const totalS3 = bayarS3.reduce((s,b)=>s+(+b.nominal||0),0);
+  const ustadzSetor = new Set(bayarS3.map(b=>b.ustadz_id)).size;
+  const totalUstadz = DB.get('s3_ustadz').filter(u=>u.status==='aktif').length;
+
   const totalSedekah = bayar.reduce((s,b)=>s+(+b.nominal||0),0);
+  const totalSemua = totalSedekah + totalS3;
   const santriSetor = new Set(bayar.map(b=>b.santri_id)).size;
 
   // STATS
   document.getElementById('lkStats').innerHTML = `
-    <div class="stat"><div class="stat-ico ic-blue">🎓</div><div class="stat-body"><div class="lbl">Total Santri</div><div class="val">${santri.length}</div></div></div>
-    <div class="stat"><div class="stat-ico ic-green">✅</div><div class="stat-body"><div class="lbl">Sudah Setor</div><div class="val">${santriSetor}</div><div class="sub">${santri.length-santriSetor} belum setor</div></div></div>
-    <div class="stat"><div class="stat-ico ic-orange">💰</div><div class="stat-body"><div class="lbl">Total Sedekah</div><div class="val rupiah" style="font-size:14px">${rupiah(totalSedekah)}</div></div></div>
-    <div class="stat"><div class="stat-ico ic-purple">📊</div><div class="stat-body"><div class="lbl">Rata-rata/Santri</div><div class="val rupiah" style="font-size:14px">${santriSetor?rupiah(Math.round(totalSedekah/santriSetor)):'Rp 0'}</div></div></div>
+    <div class="stat"><div class="stat-ico ic-blue">🎓</div><div class="stat-body"><div class="lbl">Santri Setor</div><div class="val">${santriSetor}/${santri.length}</div></div></div>
+    <div class="stat"><div class="stat-ico ic-purple">👨‍🏫</div><div class="stat-body"><div class="lbl">Ustadz Setor</div><div class="val">${ustadzSetor}/${totalUstadz}</div></div></div>
+    <div class="stat"><div class="stat-ico ic-green">💰</div><div class="stat-body"><div class="lbl">Sedekah Santri</div><div class="val rupiah" style="font-size:14px">${rupiah(totalSedekah)}</div></div></div>
+    <div class="stat"><div class="stat-ico ic-orange">💰</div><div class="stat-body"><div class="lbl">Sedekah S3 + Total</div><div class="val rupiah" style="font-size:14px">${rupiah(totalSemua)}</div><div class="sub">S3: ${rupiah(totalS3)}</div></div></div>
   `;
 
   // REKAP PER KELAS
@@ -137,18 +144,53 @@ window.renderLapKCS = function() {
       <td class="rupiah" style="padding:10px 14px">${rupiah(grandBulan)}</td>
       <td style="padding:10px 14px"></td>
     </tr>`;
+
+  // REKAP S3 USTADZ/USTADZAH
+  const ustadz = DB.get('s3_ustadz').filter(u=>u.status==='aktif');
+  const rekapS3 = ustadz.map(u=>{
+    const bu = bayarS3.filter(b=>b.ustadz_id===u.id);
+    const total = bu.reduce((s,b)=>s+(+b.nominal||0),0);
+    return {...u, jml:bu.length, total};
+  }).sort((a,b)=>b.total-a.total);
+
+  const tblS3 = document.getElementById('lkTblS3');
+  const footS3 = document.getElementById('lkFootS3');
+  if (tblS3) {
+    tblS3.innerHTML = rekapS3.length ? rekapS3.map(u=>`<tr>
+      <td style="font-weight:600">${u.nama}</td>
+      <td style="font-size:12px">${u.panggilan||'-'}</td>
+      <td style="font-size:12px">${u.amanah||'-'}</td>
+      <td style="text-align:center">${u.jml||'—'}</td>
+      <td class="rupiah" style="font-weight:700;color:var(--success)">${u.total?rupiah(u.total):'—'}</td>
+      <td>${u.jml>0?'<span class="badge b-green">✓ Setor</span>':'<span class="badge b-red">Belum</span>'}</td>
+    </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--gray-400)">Tidak ada data</td></tr>`;
+    if (footS3) footS3.innerHTML = rekapS3.length ? `
+      <tr><td colspan="3">TOTAL (${rekapS3.filter(u=>u.jml>0).length} ustadz setor)</td>
+      <td style="text-align:center">${rekapS3.reduce((s,u)=>s+u.jml,0)}</td>
+      <td class="rupiah">${rupiah(rekapS3.reduce((s,u)=>s+u.total,0))}</td>
+      <td></td></tr>` : '';
+  }
 };
 
 window.exportLapSCS = function() {
   const bulan = document.getElementById('lkBulan').value;
   const tahun = document.getElementById('lkTahun').value;
   const periode = bulan ? `${tahun}-${bulan}` : tahun;
-  const data = DB.get('scs_pembayaran').filter(b=>(b.tgl_bayar||'').startsWith(periode)).map(b=>({
-    nama_santri:b.nama_santri, kelas:b.kelas||'', halaqoh:b.halaqoh||'',
+  const label = bulan ? BULAN_NAMA_SCS[+bulan]+'_'+tahun : tahun;
+
+  // Santri
+  const dataSantri = DB.get('scs_pembayaran').filter(b=>(b.tgl_bayar||'').startsWith(periode)).map(b=>({
+    jenis:'Santri', nama:b.nama_santri, kelas:b.kelas||'', halaqoh:b.halaqoh||'',
     nominal:b.nominal, tgl_bayar:b.tgl_bayar, petugas:b.petugas||'', catatan:b.catatan||''
   }));
+  // S3 Ustadz
+  const dataS3 = DB.get('s3_pembayaran').filter(b=>(b.tgl_bayar||'').startsWith(periode)).map(b=>({
+    jenis:'Ustadz/Ustadzah', nama:b.nama_ustadz, kelas:'-', halaqoh:b.amanah||'-',
+    nominal:b.nominal, tgl_bayar:b.tgl_bayar, petugas:b.petugas||'', catatan:b.catatan||''
+  }));
+  const data = [...dataSantri, ...dataS3].sort((a,b)=>new Date(b.tgl_bayar)-new Date(a.tgl_bayar));
   if (!data.length) { toast('Tidak ada data','warn'); return; }
-  exportExcel(data, `LaporanSCS_${bulan?BULAN_NAMA_SCS[+bulan]+'_':''}${tahun}`, 'SCS');
+  exportExcel(data, `LaporanSCS_${label}`, 'SCS & S3');
 };
 
 // backward compat alias

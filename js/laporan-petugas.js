@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     DB.sync('donatur_rutin'),
     DB.sync('pengambilan_kotak'),
     DB.sync('scs_pembayaran'),
+    DB.sync('s3_pembayaran'),
     DB.sync('donatur_waqaf'),
     DB.sync('waqaf_program'),
     DB.sync('prospek_kotak'),
@@ -82,6 +83,18 @@ window.renderPetugas = function() {
     });
   });
 
+  // S3 Ustadz/Ustadzah
+  DB.get('s3_pembayaran').forEach(b => {
+    if (!b.petugas) return;
+    const tgl = b.tgl_bayar || '';
+    if (!tgl.startsWith(periode)) return;
+    semua.push({
+      petugas: b.petugas, jenis: 'S3',
+      nama: b.nama_ustadz || '-',
+      nominal: +b.nominal||0, tgl, ket: b.amanah||'-'
+    });
+  });
+
   // 4. Donasi isidental (waqaf)
   const wp = DB.get('waqaf_program');
   DB.get('donatur_waqaf').forEach(d => {
@@ -103,10 +116,11 @@ window.renderPetugas = function() {
   // Hitung rekap per petugas
   const map = {};
   filtered.forEach(x => {
-    if (!map[x.petugas]) map[x.petugas] = { nama:x.petugas, rutin:0, kotak:0, scs:0, isidental:0, total:0, jml:0 };
+    if (!map[x.petugas]) map[x.petugas] = { nama:x.petugas, rutin:0, kotak:0, scs:0, s3:0, isidental:0, total:0, jml:0 };
     if (x.jenis==='Donatur Rutin') map[x.petugas].rutin += x.nominal;
     else if (x.jenis==='Kotak Infaq') map[x.petugas].kotak += x.nominal;
     else if (x.jenis==='SCS') map[x.petugas].scs += x.nominal;
+    else if (x.jenis==='S3') map[x.petugas].s3 += x.nominal;
     else if (x.jenis==='Isidental') map[x.petugas].isidental += x.nominal;
     map[x.petugas].total += x.nominal;
     map[x.petugas].jml++;
@@ -133,11 +147,12 @@ window.renderPetugas = function() {
       <td class="rupiah" style="color:var(--success)">${r.rutin?rupiah(r.rutin):'—'}</td>
       <td class="rupiah" style="color:#f97316">${r.kotak?rupiah(r.kotak):'—'}</td>
       <td class="rupiah" style="color:var(--primary)">${r.scs?rupiah(r.scs):'—'}</td>
+      <td class="rupiah" style="color:#0ea5e9">${r.s3?rupiah(r.s3):'—'}</td>
       <td class="rupiah" style="color:#8b5cf6">${r.isidental?rupiah(r.isidental):'—'}</td>
       <td class="rupiah" style="font-weight:700;color:var(--gray-900)">${rupiah(r.total)}</td>
       <td style="text-align:center">${r.jml}x</td>
     </tr>`;
-  }).join('') : `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--gray-400)">Tidak ada data petugas di periode ini</td></tr>`;
+  }).join('') : `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--gray-400)">Tidak ada data petugas di periode ini</td></tr>`;
 
   document.getElementById('footRekapPetugas').innerHTML = rekap.length ? `
     <tr>
@@ -145,13 +160,14 @@ window.renderPetugas = function() {
       <td class="rupiah" style="padding:10px 14px">${rupiah(rekap.reduce((s,r)=>s+r.rutin,0))}</td>
       <td class="rupiah" style="padding:10px 14px">${rupiah(rekap.reduce((s,r)=>s+r.kotak,0))}</td>
       <td class="rupiah" style="padding:10px 14px">${rupiah(rekap.reduce((s,r)=>s+r.scs,0))}</td>
+      <td class="rupiah" style="padding:10px 14px">${rupiah(rekap.reduce((s,r)=>s+r.s3,0))}</td>
       <td class="rupiah" style="padding:10px 14px">${rupiah(rekap.reduce((s,r)=>s+r.isidental,0))}</td>
       <td class="rupiah" style="padding:10px 14px">${rupiah(grandTotal)}</td>
       <td style="padding:10px 14px;text-align:center">${grandJml}x</td>
     </tr>` : '';
 
   // DETAIL TABLE
-  const jenisColor = { 'Donatur Rutin':'b-green', 'Kotak Infaq':'b-orange', 'SCS':'b-blue', 'Isidental':'b-purple' };
+  const jenisColor = { 'Donatur Rutin':'b-green', 'Kotak Infaq':'b-orange', 'SCS':'b-blue', 'S3':'b-teal', 'Isidental':'b-purple' };
   document.getElementById('tblDetailPetugas').innerHTML = filtered.length ? filtered.map(x => `
     <tr>
       <td style="font-weight:600">${x.petugas}</td>
@@ -232,6 +248,9 @@ window.exportLaporanPetugas = function() {
   });
   DB.get('scs_pembayaran').filter(b=>b.petugas&&(b.tgl_bayar||'').startsWith(periode)).forEach(b => {
     rows.push({ petugas:b.petugas, jenis:'SCS', nama:b.nama_santri||'-', nominal:b.nominal, tgl:b.tgl_bayar||'' });
+  });
+  DB.get('s3_pembayaran').filter(b=>b.petugas&&(b.tgl_bayar||'').startsWith(periode)).forEach(b => {
+    rows.push({ petugas:b.petugas, jenis:'S3', nama:b.nama_ustadz||'-', nominal:b.nominal, tgl:b.tgl_bayar||'' });
   });
   DB.get('donatur_waqaf').filter(d=>d.petugas&&(d.tgl_donasi||'').startsWith(periode)).forEach(d => {
     rows.push({ petugas:d.petugas, jenis:'Isidental', nama:d.nama||'-', nominal:d.nominal, tgl:d.tgl_donasi||'' });
