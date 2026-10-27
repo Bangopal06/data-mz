@@ -49,7 +49,7 @@ function loadStats() {
   const el=document.getElementById('drStats'); if(!el) return;
   el.innerHTML=`
     <div class="stat"><div class="stat-ico ic-green">💚</div><div class="stat-body"><div class="lbl">Donatur Aktif</div><div class="val">${dr.filter(d=>d.status==='aktif').length}</div></div></div>
-    <div class="stat"><div class="stat-ico ic-blue">👤</div><div class="stat-body"><div class="lbl">Total Prospek</div><div class="val">${pr.length}</div></div></div>
+    <div class="stat"><div class="stat-ico ic-blue">👤</div><div class="stat-body"><div class="lbl">Donatur Baru</div><div class="val">${pr.length}</div></div></div>
     <div class="stat"><div class="stat-ico ic-red">⚠️</div><div class="stat-body"><div class="lbl">Tidak Aktif</div><div class="val">${dr.filter(d=>d.status!=='aktif').length}</div></div></div>
     <div class="stat"><div class="stat-ico ic-teal">💰</div><div class="stat-body"><div class="lbl">Total Donasi/Bulan</div><div class="val rupiah" style="font-size:15px">${rupiah(total)}</div></div></div>`;
 }
@@ -148,7 +148,7 @@ function loadProspek() {
       <button class="btn btn-ghost btn-sm btn-icon" onclick="openModalProspek('${d.id}')">✏️</button>
       <button class="btn btn-ghost btn-sm btn-icon" onclick="hapusProspek('${d.id}')">🗑️</button>
     </div></td></tr>`).join('')
-  :`<tr><td colspan="8"><div class="empty"><div class="ei">👤</div><div class="et">Belum ada calon donatur</div></div></td></tr>`;
+  :`<tr><td colspan="8"><div class="empty"><div class="ei">👤</div><div class="et">Belum ada Donatur Baru</div></div></td></tr>`;
   renderPagination('pagProspek',total,pgProspek,PS,'goPgProspek');
 }
 window.goPgProspek=p=>{pgProspek=p;loadProspek();};
@@ -334,7 +334,7 @@ window.hapusBayar=async function(id){
 window.openModalProspek=function(id=null){
   const d=id?DB.get('prospek_rutin').find(x=>x.id===id):null;
   document.body.insertAdjacentHTML('beforeend',`<div class="overlay" id="ovProspek">
-    <div class="modal"><div class="modal-head"><h3>${d?'Edit':'Tambah'} Calon Donatur</h3><button class="modal-close" onclick="closeModal('ovProspek')">✕</button></div>
+    <div class="modal"><div class="modal-head"><h3>${d?'Edit':'Tambah'} Donatur Baru</h3><button class="modal-close" onclick="closeModal('ovProspek')">✕</button></div>
       <div class="modal-body"><div class="fgrid">
         <div class="fg"><label class="flabel">Nama *</label><input id="pNama" class="fctrl" value="${d?.nama||''}"></div>
         <div class="fg"><label class="flabel">No. HP *</label><input id="pHP" class="fctrl" value="${d?.hp||''}"></div>
@@ -359,7 +359,7 @@ window.saveProspek=async function(id){
   const nama=document.getElementById('pNama').value.trim();
   const hp=document.getElementById('pHP').value.trim();
   if(!nama||!hp){toast('Nama dan HP wajib diisi','warn');return;}
-  if(!await confirmSave(`Simpan calon donatur <strong>${nama}</strong>?`)) return;
+  if(!await confirmSave(`Simpan Donatur Baru <strong>${nama}</strong>?`)) return;
   const payload={nama,hp,alamat:document.getElementById('pAlamat').value.trim(),
     kota:document.getElementById('pKota').value.trim(),
     nominal_potensi:+document.getElementById('pPotensi').value||0,
@@ -369,7 +369,7 @@ window.saveProspek=async function(id){
   const r=id?await DB.update('prospek_rutin',id,payload):await DB.insert('prospek_rutin',payload);
   if(!r){toast('Gagal menyimpan','err');return;}
   await DB.sync('prospek_rutin');
-  toast('Data calon donatur tersimpan','ok');closeModal('ovProspek');loadStats();loadProspek();loadSemua();
+  toast('Data Donatur Baru tersimpan','ok');closeModal('ovProspek');loadStats();loadProspek();loadSemua();
 };
 
 window.hapusProspek=async function(id){
@@ -406,7 +406,7 @@ window.triggerImport=function(){
       <div class="modal-head"><h3>⬆️ Import Excel/CSV</h3><button class="modal-close" onclick="closeModal('ovImport')">✕</button></div>
       <div class="modal-body">
         <div class="fg mb3"><label class="flabel">Masukkan sebagai *</label>
-          <select id="importType" class="fctrl"><option value="donatur_rutin">Donatur Aktif</option><option value="prospek_rutin">Calon Donatur</option></select>
+          <select id="importType" class="fctrl"><option value="donatur_rutin">Donatur Aktif</option><option value="prospek_rutin">Donatur Baru</option></select>
         </div>
         <div onclick="document.getElementById('impFile').click()"
           style="border:2px dashed var(--gray-300);border-radius:10px;padding:28px;text-align:center;cursor:pointer;background:var(--gray-50)"
@@ -511,7 +511,7 @@ window.handleImpFile=function(file){
 window.downloadImportTemplate=function(){
   const type=document.getElementById('importType')?.value||'donatur_rutin';
   const isDonatur=type==='donatur_rutin';
-  buildTemplateExcel(isDonatur?'Template Import Donatur Rutin':'Template Import Calon Donatur',
+  buildTemplateExcel(isDonatur?'Template Import Donatur Rutin':'Template Import Donatur Baru',
     isDonatur?['Nama Lengkap','No. HP','Alamat','Kota','Program Donasi','Nominal/Bulan','Metode','Tgl Mulai','Petugas','Catatan']:['Nama Lengkap','No. HP','Alamat','Kota','Potensi Donasi','Petugas','Catatan'],
     isDonatur?['nama','hp','alamat','kota','program','nominal','metode','tgl_mulai','petugas','catatan']:['nama','hp','alamat','kota','nominal_potensi','petugas','catatan'],
     isDonatur?[['Budi Santoso','081234567890','Jl. Merdeka No.1','Jakarta','Beasiswa Anak Yatim','500000','transfer','2026-01-01','Ahmad','']]:
