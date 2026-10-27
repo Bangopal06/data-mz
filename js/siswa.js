@@ -266,9 +266,14 @@ window.doImportSiswa = async function() {
   };
 
   let sukses=0, skip=0;
+  // Daftar nilai yang kemungkinan adalah header/judul, bukan data
+  const headerWords = ['nama siswa','nama','kelas','alamat','no','nomer','number'];
   for(const row of _siswaRows) {
     const nama = getVal(row, getNama);
     if (!nama) { skip++; continue; }
+    // Skip baris yang isinya seperti header
+    if (headerWords.includes(nama.toLowerCase())) { skip++; continue; }
+    if (nama.toLowerCase().startsWith('data siswa') || nama.toLowerCase().startsWith('kelas')) { skip++; continue; }
     const kelas = getVal(row, document.getElementById('smap_kelas')?.value) || kelasDefault;
     const payload = {
       nama, kelas,
