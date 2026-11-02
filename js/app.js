@@ -67,11 +67,13 @@ window.closeModal = function(id) { document.getElementById(id)?.remove(); };
 
 function badge(status) {
   const m = { aktif:'b-green', baru:'b-blue', dihubungi:'b-yellow', survei:'b-orange',
-    tidak_aktif:'b-gray', berhenti:'b-red', lunas:'b-green', cicilan:'b-teal', pending:'b-yellow',
+    tidak_aktif:'b-gray', berhenti:'b-red', menunggu:'b-yellow',
+    lunas:'b-green', cicilan:'b-teal', pending:'b-yellow',
     mingguan:'b-blue', bulanan:'b-purple', dua_mingguan:'b-teal',
     masjid:'b-green', kesehatan:'b-teal', pendidikan:'b-blue', sosial:'b-purple' };
   const labels = { aktif:'Aktif', baru:'Baru', dihubungi:'Dihubungi', survei:'Survei',
-    tidak_aktif:'Tidak Aktif', berhenti:'Berhenti', lunas:'Lunas', cicilan:'Cicilan', pending:'Pending',
+    tidak_aktif:'Tidak Aktif', berhenti:'Berhenti', menunggu:'Menunggu',
+    lunas:'Lunas', cicilan:'Cicilan', pending:'Pending',
     mingguan:'Mingguan', bulanan:'Bulanan', dua_mingguan:'2 Mingguan',
     masjid:'Masjid', kesehatan:'Kesehatan', pendidikan:'Pendidikan', sosial:'Sosial' };
   return `<span class="badge ${m[status]||'b-gray'}">${labels[status]||status}</span>`;

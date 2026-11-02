@@ -137,12 +137,14 @@ function loadProspek() {
   const {items,total}=paginate(data,pgProspek,PS);
   const tbody=document.getElementById('tblProspek'); if(!tbody) return;
   tbody.innerHTML=items.length?items.map(d=>`<tr>
-    <td class="td-name">${d.nama}</td><td class="td-mono">${d.hp||'-'}</td>
-    <td style="font-size:12px">${d.alamat||'-'}</td>
+    <td class="td-name">${d.nama}</td>
+    <td class="td-mono">${d.hp||'-'}</td>
     <td style="font-size:12px">${d.kota||'-'}</td>
+    <td class="rupiah" style="font-weight:600;color:var(--success)">${d.nominal_potensi?rupiah(d.nominal_potensi):'—'}</td>
+    <td style="font-size:12px">${d.program||'-'}</td>
     <td>${badge(d.status)}</td>
     <td style="font-size:12px">${d.petugas||'-'}</td>
-    <td style="font-size:12px;color:var(--gray-500);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.catatan||'-'}</td>
+    <td style="font-size:12px;color:var(--gray-500);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.catatan||'-'}</td>
     <td><div class="td-actions">
       <button class="btn btn-success btn-sm" onclick="jadikanDonatur('${d.id}')">✓ Aktifkan</button>
       <button class="btn btn-ghost btn-sm btn-icon" onclick="openModalProspek('${d.id}')">✏️</button>
@@ -320,6 +322,23 @@ window.saveBayar=async function(){
     catatan:document.getElementById('bCatatan').value.trim()});
   if(!r){toast('Gagal menyimpan','err');return;}
   await DB.sync('pembayaran_rutin');
+
+  // Cek auto-aktifkan: jika donatur ini berasal dari prospek dan pembayaran ini adalah bulan ke-2
+  if (donatur?.catatan?.includes('[dari_prospek]')) {
+    const allBayar = DB.get('pembayaran_rutin').filter(p=>p.donatur_id===donaturId);
+    if (allBayar.length >= 2) {
+      // Sudah bayar 2x — update status jadi aktif dan hapus marker
+      await DB.update('donatur_rutin', donaturId, {
+        status: 'aktif',
+        catatan: donatur.catatan.replace('[dari_prospek]','').trim()
+      });
+      await DB.sync('donatur_rutin',{force:true});
+      toast('✅ Pembayaran dicatat. Donatur otomatis diaktifkan!','ok');
+      closeModal('ovBayar'); loadBayar(); loadStats(); loadSemua(); loadAktif();
+      return;
+    }
+  }
+
   toast('Pembayaran dicatat','ok');closeModal('ovBayar');loadBayar();
 };
 
@@ -334,19 +353,33 @@ window.hapusBayar=async function(id){
 window.openModalProspek=function(id=null){
   const d=id?DB.get('prospek_rutin').find(x=>x.id===id):null;
   document.body.insertAdjacentHTML('beforeend',`<div class="overlay" id="ovProspek">
-    <div class="modal"><div class="modal-head"><h3>${d?'Edit':'Tambah'} Donatur Baru</h3><button class="modal-close" onclick="closeModal('ovProspek')">✕</button></div>
-      <div class="modal-body"><div class="fgrid">
-        <div class="fg"><label class="flabel">Nama *</label><input id="pNama" class="fctrl" value="${d?.nama||''}"></div>
-        <div class="fg"><label class="flabel">No. HP *</label><input id="pHP" class="fctrl" value="${d?.hp||''}"></div>
-        <div class="fg"><label class="flabel">Alamat</label><input id="pAlamat" class="fctrl" value="${d?.alamat||''}"></div>
-        <div class="fg"><label class="flabel">Kota</label><input id="pKota" class="fctrl" value="${d?.kota||''}"></div>
-        <div class="fg"><label class="flabel">Potensi Donasi (Rp)</label><input type="number" id="pPotensi" class="fctrl" value="${d?.nominal_potensi||''}"></div>
-        <div class="fg"><label class="flabel">Status</label>
-          <select id="pStatus" class="fctrl">${['baru','dihubungi','survei'].map(s=>`<option value="${s}" ${d?.status===s?'selected':''}>${s}</option>`).join('')}</select>
+    <div class="modal modal-lg"><div class="modal-head"><h3>${d?'Edit':'Tambah'} Donatur Baru</h3><button class="modal-close" onclick="closeModal('ovProspek')">✕</button></div>
+      <div class="modal-body">
+        <div class="sec-div">Data Pribadi</div>
+        <div class="fgrid">
+          <div class="fg"><label class="flabel">Nama *</label><input id="pNama" class="fctrl" value="${d?.nama||''}"></div>
+          <div class="fg"><label class="flabel">No. HP *</label><input id="pHP" class="fctrl" value="${d?.hp||''}"></div>
+          <div class="fg"><label class="flabel">Alamat</label><input id="pAlamat" class="fctrl" value="${d?.alamat||''}"></div>
+          <div class="fg"><label class="flabel">Kota</label><input id="pKota" class="fctrl" value="${d?.kota||''}"></div>
         </div>
-        <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('pPetugas', d?.petugas||'')}</div>
-        <div class="fg fcol2"><label class="flabel">Catatan</label><textarea id="pCatatan" class="fctrl">${d?.catatan||''}</textarea></div>
-      </div></div>
+        <div class="sec-div">Data Donasi</div>
+        <div class="fgrid">
+          <div class="fg"><label class="flabel">Nominal/Bulan (Rp) *</label><input type="number" id="pNominal" class="fctrl" value="${d?.nominal_potensi||''}" placeholder="0"></div>
+          <div class="fg"><label class="flabel">Program</label>
+            <input id="pProgram" class="fctrl" list="pProgList" value="${d?.program||''}">
+            <datalist id="pProgList"><option>Beasiswa Anak Yatim</option><option>Pangan & Gizi</option><option>Kesehatan</option><option>Pemberdayaan Ekonomi</option></datalist>
+          </div>
+          <div class="fg"><label class="flabel">Metode</label>
+            <select id="pMetode" class="fctrl">${['transfer','tunai','qris','auto_debit'].map(m=>`<option value="${m}" ${d?.metode===m?'selected':''}>${m}</option>`).join('')}</select>
+          </div>
+          <div class="fg"><label class="flabel">Tgl Mulai</label><input type="date" id="pTglMulai" class="fctrl" value="${d?.tgl_mulai||new Date().toISOString().split('T')[0]}"></div>
+          <div class="fg"><label class="flabel">Status</label>
+            <select id="pStatus" class="fctrl">${['baru','dihubungi','survei'].map(s=>`<option value="${s}" ${d?.status===s?'selected':''}>${s}</option>`).join('')}</select>
+          </div>
+          <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('pPetugas', d?.petugas||'')}</div>
+          <div class="fg fcol2"><label class="flabel">Catatan</label><textarea id="pCatatan" class="fctrl">${d?.catatan||''}</textarea></div>
+        </div>
+      </div>
       <div class="modal-foot">
         <button class="btn btn-outline" onclick="closeModal('ovProspek')">Batal</button>
         <button class="btn btn-primary" onclick="saveProspek('${id||''}')">Simpan</button>
@@ -360,12 +393,18 @@ window.saveProspek=async function(id){
   const hp=document.getElementById('pHP').value.trim();
   if(!nama||!hp){toast('Nama dan HP wajib diisi','warn');return;}
   if(!await confirmSave(`Simpan Donatur Baru <strong>${nama}</strong>?`)) return;
-  const payload={nama,hp,alamat:document.getElementById('pAlamat').value.trim(),
+  const payload={
+    nama, hp,
+    alamat:document.getElementById('pAlamat').value.trim(),
     kota:document.getElementById('pKota').value.trim(),
-    nominal_potensi:+document.getElementById('pPotensi').value||0,
+    nominal_potensi:+document.getElementById('pNominal').value||0,
+    program:document.getElementById('pProgram').value.trim(),
+    metode:document.getElementById('pMetode').value,
+    tgl_mulai:document.getElementById('pTglMulai').value||null,
     status:document.getElementById('pStatus').value,
     petugas:getPetugas('pPetugas'),
-    catatan:document.getElementById('pCatatan').value.trim()};
+    catatan:document.getElementById('pCatatan').value.trim()
+  };
   const r=id?await DB.update('prospek_rutin',id,payload):await DB.insert('prospek_rutin',payload);
   if(!r){toast('Gagal menyimpan','err');return;}
   await DB.sync('prospek_rutin');
@@ -381,14 +420,24 @@ window.hapusProspek=async function(id){
 
 window.jadikanDonatur=async function(id){
   const p=DB.get('prospek_rutin').find(x=>x.id===id); if(!p) return;
-  if(!await confirmAction('✅','Jadikan Donatur Aktif?',`<strong>${p.nama}</strong> akan dipindahkan menjadi donatur aktif.`,'Ya, Aktifkan','btn-success')) return;
-  const r=await DB.insert('donatur_rutin',{nama:p.nama,hp:p.hp,alamat:p.alamat||'',kota:p.kota||'',
-    petugas:p.petugas||'',program:'',nominal:p.nominal_potensi||0,metode:'transfer',
-    tgl_mulai:new Date().toISOString().split('T')[0],status:'aktif',catatan:p.catatan||''});
+  if(!await confirmAction('✅','Pindahkan ke Donatur Aktif?',
+    `<strong>${p.nama}</strong> akan dicatat sebagai donatur aktif dengan nominal <strong>${rupiah(p.nominal_potensi||0)}/bulan</strong>.<br><small style="color:var(--gray-500)">Akan otomatis aktif penuh setelah pembayaran bulan ke-2.</small>`,
+    'Ya, Aktifkan','btn-success')) return;
+  const r=await DB.insert('donatur_rutin',{
+    nama:p.nama, hp:p.hp, alamat:p.alamat||'', kota:p.kota||'',
+    petugas:p.petugas||'',
+    program:p.program||'',
+    nominal:p.nominal_potensi||0,
+    metode:p.metode||'transfer',
+    tgl_mulai:p.tgl_mulai||new Date().toISOString().split('T')[0],
+    status:'menunggu',
+    catatan:((p.catatan||'')+' [dari_prospek]').trim()
+  });
   if(!r){toast('Gagal','err');return;}
   await DB.delete('prospek_rutin',id);
   await Promise.all([DB.sync('donatur_rutin'),DB.sync('prospek_rutin')]);
-  toast(`${p.nama} jadi donatur aktif!`,'ok');loadStats();loadSemua();loadAktif();loadProspek();
+  toast(`${p.nama} dipindahkan. Akan aktif penuh setelah bayar bulan ke-2 🎉`,'ok');
+  loadStats();loadSemua();loadAktif();loadProspek();
 };
 
 // ---- EXPORT ----

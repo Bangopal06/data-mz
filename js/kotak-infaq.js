@@ -43,7 +43,7 @@ function loadKiStats() {
   const totalAll = pa.reduce((s,a)=>s+(+a.nominal||0),0);
   document.getElementById('kiStats').innerHTML = `
     <div class="stat"><div class="stat-ico ic-orange">🗃️</div><div class="stat-body"><div class="lbl">Kotak Aktif</div><div class="val">${ki.filter(k=>k.status==='aktif').length}</div><div class="sub">${ki.length} total kotak</div></div></div>
-    <div class="stat"><div class="stat-ico ic-blue">👤</div><div class="stat-body"><div class="lbl">Prospek Kotak</div><div class="val">${pk.length}</div><div class="sub">Calon lokasi</div></div></div>
+    <div class="stat"><div class="stat-ico ic-blue">👤</div><div class="stat-body"><div class="lbl">Kotak Baru</div><div class="val">${pk.length}</div><div class="sub">Lokasi baru</div></div></div>
     <div class="stat"><div class="stat-ico ic-green">💰</div><div class="stat-body"><div class="lbl">Infaq Terakhir</div><div class="val rupiah" style="font-size:15px">${rupiah(totalInfaq)}</div></div></div>
     <div class="stat"><div class="stat-ico ic-teal">📊</div><div class="stat-body"><div class="lbl">Total Terkumpul</div><div class="val rupiah" style="font-size:15px">${rupiah(totalAll)}</div></div></div>
   `;
@@ -343,7 +343,7 @@ window.hapusAmbil = async function(id) {
 };
 window.hapusAmbilById = window.hapusAmbil;
 
-// ============ PROSPEK KOTAK ============
+// ============ Kotak Baru ============
 function loadProsKotak() {
   let data = DB.get('prospek_kotak');
   const sr = document.getElementById('srProsKotak').value.toLowerCase();
@@ -366,7 +366,7 @@ function loadProsKotak() {
         <button class="btn btn-ghost btn-sm btn-icon" onclick="openModalProsKotak('${d.id}')">✏️</button>
         <button class="btn btn-ghost btn-sm btn-icon" onclick="hapusProsKotak('${d.id}')">🗑️</button>
       </div></td>
-    </tr>`).join('') : `<tr><td colspan="8"><div class="empty"><div class="ei">👤</div><div class="et">Belum ada prospek</div></div></td></tr>`;
+    </tr>`).join('') : `<tr><td colspan="8"><div class="empty"><div class="ei">👤</div><div class="et">Belum ada kotak baru</div></div></td></tr>`;
   renderPagination('pagProsKotak', total, pgProsKotak, PS, 'goPgProsKotak');
 }
 window.goPgProsKotak = p => { pgProsKotak=p; loadProsKotak(); };
@@ -375,7 +375,7 @@ window.openModalProsKotak = function(id=null) {
   const d = id ? DB.get('prospek_kotak').find(x=>x.id===id) : null;
   const html = `<div class="overlay" id="ovProsKotak">
     <div class="modal">
-      <div class="modal-head"><h3>${d?'Edit':'Tambah'} Prospek Kotak Infaq</h3><button class="modal-close" onclick="closeModal('ovProsKotak')">✕</button></div>
+      <div class="modal-head"><h3>${d?'Edit':'Tambah'} Kotak Baru Infaq</h3><button class="modal-close" onclick="closeModal('ovProsKotak')">✕</button></div>
       <div class="modal-body">
         <div class="fgrid">
           <div class="fg"><label class="flabel">Nama Toko *</label><input id="pkNamaToko" class="fctrl" value="${d?.nama_toko||''}"></div>
@@ -408,7 +408,7 @@ window.saveProsKotak = async function(id) {
   const r = id ? await DB.update('prospek_kotak',id,payload) : await DB.insert('prospek_kotak',payload);
   if(!r){toast('Gagal menyimpan','err');return;}
   await DB.sync('prospek_kotak');
-  toast('Data prospek tersimpan','ok'); closeModal('ovProsKotak'); loadKiStats(); loadProsKotak();
+  toast('Data kotak baru tersimpan','ok'); closeModal('ovProsKotak'); loadKiStats(); loadProsKotak();
 };
 
 window.hapusProsKotak = async function(id) {
@@ -459,7 +459,7 @@ window.triggerImportKotak = function() {
           <label class="flabel">Masukkan sebagai *</label>
           <select id="importKotakType" class="fctrl">
             <option value="kotak_infaq">Data Kotak Infaq (Aktif)</option>
-            <option value="prospek_kotak">Prospek Kotak Infaq</option>
+            <option value="prospek_kotak">Kotak Baru Infaq</option>
           </select>
         </div>
         <div class="fg mb3">
@@ -472,7 +472,7 @@ window.triggerImportKotak = function() {
         <div style="background:var(--primary-light);border-radius:8px;padding:12px;font-size:12px;color:var(--primary);margin-bottom:16px">
           <strong>Kotak Infaq — Format kolom:</strong><br>
           nama_kotak, nama_toko, pemilik, hp, alamat, kecamatan, kota, frekuensi, petugas, catatan<br><br>
-          <strong>Prospek Kotak — Format kolom:</strong><br>
+          <strong>Kotak Baru — Format kolom:</strong><br>
           nama_toko, pemilik, hp, alamat, kecamatan, kota, petugas, catatan<br>
           <em>Baris pertama = header kolom</em>
         </div>
@@ -571,6 +571,6 @@ window.downloadKotakTemplate = function() {
     : [['Toko Berkah','Pak Hasan','083333444555','Jl. Mawar No.2','Beji','Depok','Citra','Tertarik pasang kotak'],
        ['Warung Nasi Barokah','Bu Yati','084444555666','Jl. Kenanga No.8','Pancoran','Jakarta Selatan','Ahmad','']];
 
-  const title = isKotak ? 'Template Import Kotak Infaq' : 'Template Import Prospek Kotak';
+  const title = isKotak ? 'Template Import Kotak Infaq' : 'Template Import Kotak Baru';
   buildTemplateExcel(title, labels, headers, contoh, type);
 };
