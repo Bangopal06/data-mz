@@ -230,6 +230,78 @@ window.renderPetugas = function() {
       <td style="font-size:12px;color:var(--gray-500);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.catatan||'-'}</td>
     </tr>`).join('')
   : `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--gray-400)">Tidak ada data prospek</td></tr>`;
+
+  // REKAP METODE PEMBAYARAN
+  const metodeMap = {};
+  filtered.forEach(x => {
+    // Ambil metode dari data pembayaran asli
+    let metode = 'lainnya';
+    if (x.jenis === 'Donatur Rutin') {
+      const bayarData = DB.get('pembayaran_rutin').find(b => {
+        const dr = DB.get('donatur_rutin').find(d => d.nama === x.nama);
+        return dr && b.donatur_id === dr.id && b.tgl_bayar === x.tgl;
+      });
+      metode = bayarData?.metode || 'transfer';
+    } else if (x.jenis === 'Kotak Infaq') {
+      metode = 'tunai';
+    } else if (x.jenis === 'SCS' || x.jenis === 'S3') {
+      metode = 'tunai';
+    } else if (x.jenis === 'Isidental') {
+      metode = 'transfer';
+    }
+    if (!metodeMap[metode]) metodeMap[metode] = { jml: 0, total: 0 };
+    metodeMap[metode].jml++;
+    metodeMap[metode].total += x.nominal;
+  });
+
+  // Juga ambil dari pembayaran rutin langsung untuk akurasi metode
+  const allBayarPeriode = DB.get('pembayaran_rutin').filter(b => (b.tgl_bayar||'').startsWith(filterPt ?
+    (document.getElementById('flTahun').value + (document.getElementById('flBulan').value ? '-'+document.getElementById('flBulan').value : '')) :
+    (document.getElementById('flTahun').value + (document.getElementById('flBulan').value ? '-'+document.getElementById('flBulan').value : ''))
+  ));
+
+  // Hitung metode dari semua sumber pembayaran
+  const metodeTotal = {};
+  [...DB.get('pembayaran_rutin'), ...DB.get('scs_pembayaran'), ...DB.get('s3_pembayaran'), ...DB.get('pengambilan_kotak'), ...DB.get('donatur_waqaf')]
+    .forEach(b => {
+      const tglB = b.tgl_bayar || b.tgl_ambil || b.tgl_donasi || '';
+      const periode2 = document.getElementById('flTahun').value + (document.getElementById('flBulan').value ? '-'+document.getElementById('flBulan').value : '');
+      if (!tglB.startsWith(periode2)) return;
+      const m = b.metode || (b.tgl_ambil ? 'tunai' : 'transfer');
+      if (!metodeTotal[m]) metodeTotal[m] = { jml: 0, total: 0 };
+      metodeTotal[m].jml++;
+      metodeTotal[m].total += +(b.nominal || 0);
+    });
+
+  const metodeEl = document.getElementById('tblMetodePembayaran');
+  const grandMetode = Object.values(metodeTotal).reduce((s,m)=>s+m.total,0);
+  if (metodeEl) {
+    metodeEl.innerHTML = Object.entries(metodeTotal).sort((a,b)=>b[1].total-a[1].total).map(([m,v]) => {
+      const pct = grandMetode ? Math.round(v.total/grandMetode*100) : 0;
+      const color = m==='tunai'?'#f97316':m==='transfer'?'var(--primary)':m==='qris'?'#8b5cf6':'var(--gray-400)';
+      return `<tr>
+        <td style="font-weight:600;text-transform:capitalize">${m}</td>
+        <td style="text-align:center">${v.jml}x</td>
+        <td class="rupiah" style="font-weight:700;color:${color}">${rupiah(v.total)}</td>
+        <td style="min-width:120px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="flex:1;height:8px;background:var(--gray-200);border-radius:99px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:${color};border-radius:99px"></div>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:${color}">${pct}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--gray-400)">Tidak ada data</td></tr>`;
+
+    document.getElementById('footMetodePembayaran').innerHTML = `
+      <tr style="background:var(--gray-800);color:white">
+        <td style="padding:10px 14px">TOTAL</td>
+        <td style="padding:10px 14px;text-align:center">${Object.values(metodeTotal).reduce((s,m)=>s+m.jml,0)}x</td>
+        <td class="rupiah" style="padding:10px 14px">${rupiah(grandMetode)}</td>
+        <td style="padding:10px 14px">100%</td>
+      </tr>`;
+  }
 };
 
 window.exportLaporanPetugas = function() {
