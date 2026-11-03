@@ -143,7 +143,7 @@ function loadProspek() {
     <td class="rupiah" style="font-weight:600;color:var(--success)">${d.nominal_potensi?rupiah(d.nominal_potensi):'—'}</td>
     <td style="font-size:12px">${d.program||'-'}</td>
     <td>${badge(d.status)}</td>
-    <td style="font-size:12px">${d.petugas||'-'}</td>
+    <td style="font-size:12px">${d.petugas_prospek||d.petugas||'-'}</td>
     <td style="font-size:12px;color:var(--gray-500);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.catatan||'-'}</td>
     <td><div class="td-actions">
       <button class="btn btn-success btn-sm" onclick="jadikanDonatur('${d.id}')">✓ Aktifkan</button>
@@ -340,7 +340,7 @@ window.saveBayar=async function(){
         catatan: donatur.catatan.replace('[dari_prospek]','').trim()
       });
       await DB.sync('donatur_rutin',{force:true});
-      toast('✅ Pembayaran dicatat. Donatur otomatis diaktifkan!','ok');
+      toast('✅ Pembayaran ke-2 dicatat. Donatur resmi AKTIF!','ok');
       closeModal('ovBayar'); loadBayar(); loadStats(); loadSemua(); loadAktif();
       return;
     }
@@ -410,6 +410,7 @@ window.saveProspek=async function(id){
     tgl_mulai:document.getElementById('pTglMulai').value||null,
     status:document.getElementById('pStatus').value,
     petugas:getPetugas('pPetugas'),
+    petugas_prospek:getPetugas('pPetugas'),  // simpan nama petugas pengembang
     catatan:document.getElementById('pCatatan').value.trim()
   };
   const r=id?await DB.update('prospek_rutin',id,payload):await DB.insert('prospek_rutin',payload);
@@ -428,11 +429,13 @@ window.hapusProspek=async function(id){
 window.jadikanDonatur=async function(id){
   const p=DB.get('prospek_rutin').find(x=>x.id===id); if(!p) return;
   if(!await confirmAction('✅','Pindahkan ke Donatur Aktif?',
-    `<strong>${p.nama}</strong> akan dicatat sebagai donatur aktif dengan nominal <strong>${rupiah(p.nominal_potensi||0)}/bulan</strong>.<br><small style="color:var(--gray-500)">Akan otomatis aktif penuh setelah pembayaran bulan ke-2.</small>`,
+    `<strong>${p.nama}</strong> akan dicatat sebagai donatur aktif dengan nominal <strong>${rupiah(p.nominal_potensi||0)}/bulan</strong>.<br><small style="color:var(--gray-500)">Pembayaran pertama otomatis dicatat. Petugas pengembang: <strong>${p.petugas_prospek||p.petugas||'-'}</strong></small>`,
     'Ya, Aktifkan','btn-success')) return;
+
+  // 1. Insert ke donatur_rutin dengan status menunggu, petugas kosong
   const r=await DB.insert('donatur_rutin',{
     nama:p.nama, hp:p.hp, alamat:p.alamat||'', kota:p.kota||'',
-    petugas:p.petugas||'',
+    petugas:'',  // dikosongkan — petugas ambil bulan berikutnya bisa beda
     program:p.program||'',
     nominal:p.nominal_potensi||0,
     metode:p.metode||'transfer',
@@ -441,10 +444,25 @@ window.jadikanDonatur=async function(id){
     catatan:((p.catatan||'')+' [dari_prospek]').trim()
   });
   if(!r){toast('Gagal','err');return;}
+
+  // 2. Otomatis catat pembayaran pertama atas nama petugas pengembang
+  if (p.nominal_potensi > 0) {
+    await DB.insert('pembayaran_rutin',{
+      donatur_id: r.id,
+      nama_donatur: p.nama,
+      nominal: p.nominal_potensi,
+      tgl_bayar: p.tgl_mulai||new Date().toISOString().split('T')[0],
+      metode: p.metode||'transfer',
+      petugas: p.petugas_prospek||p.petugas||'',
+      catatan: 'Pembayaran pertama (dari donatur baru)'
+    });
+  }
+
+  // 3. Hapus dari prospek
   await DB.delete('prospek_rutin',id);
-  await Promise.all([DB.sync('donatur_rutin'),DB.sync('prospek_rutin')]);
-  toast(`${p.nama} dipindahkan. Akan aktif penuh setelah bayar bulan ke-2 🎉`,'ok');
-  loadStats();loadSemua();loadAktif();loadProspek();
+  await Promise.all([DB.sync('donatur_rutin'),DB.sync('prospek_rutin'),DB.sync('pembayaran_rutin')]);
+  toast(`${p.nama} diaktifkan! Pembayaran pertama otomatis dicatat 🎉`,'ok');
+  loadStats();loadSemua();loadAktif();loadProspek();loadBayar();
 };
 
 // ---- EXPORT ----
