@@ -251,9 +251,24 @@ window.saveDonatur=async function(id){
     catatan:document.getElementById('dCatatan').value.trim()};
   const r=id?await DB.update('donatur_rutin',id,payload):await DB.insert('donatur_rutin',payload);
   if(!r){toast('Gagal menyimpan','err');return;}
+
+  // Jika tambah baru dengan status menunggu, otomatis catat pembayaran pertama
+  if (!id && payload.status === 'menunggu' && nominal > 0) {
+    await DB.insert('pembayaran_rutin', {
+      donatur_id: r.id,
+      nama_donatur: nama,
+      nominal,
+      tgl_bayar: payload.tgl_mulai || new Date().toISOString().split('T')[0],
+      metode: payload.metode || 'transfer',
+      petugas: payload.petugas || '',
+      catatan: 'Pembayaran pertama (donatur baru)'
+    });
+    await DB.sync('pembayaran_rutin', {force:true});
+  }
+
   await DB.sync('donatur_rutin');
-  toast(id?'Data diperbarui':'Donatur ditambahkan','ok');
-  closeModal('ovDonatur');loadStats();loadSemua();loadAktif();loadProspek();loadProgramFilter();
+  toast(id?'Data diperbarui':'Donatur baru ditambahkan & pembayaran pertama dicatat','ok');
+  closeModal('ovDonatur');loadStats();loadSemua();loadAktif();loadProspek();loadBayar();loadProgramFilter();
 };
 
 window.hapusDonatur=async function(id){
@@ -351,17 +366,16 @@ window.saveBayar=async function(){
   await DB.sync('pembayaran_rutin');
 
   // Cek auto-aktifkan: jika donatur ini berasal dari prospek dan pembayaran ini adalah bulan ke-2
-  if (donatur?.catatan?.includes('[dari_prospek]')) {
+  if (donatur?.status === 'menunggu') {
     const allBayar = DB.get('pembayaran_rutin').filter(p=>p.donatur_id===donaturId);
     if (allBayar.length >= 2) {
-      // Sudah bayar 2x — update status jadi aktif dan hapus marker
       await DB.update('donatur_rutin', donaturId, {
         status: 'aktif',
-        catatan: donatur.catatan.replace('[dari_prospek]','').trim()
+        catatan: (donatur.catatan||'').replace('[dari_prospek]','').trim()
       });
       await DB.sync('donatur_rutin',{force:true});
       toast('✅ Pembayaran ke-2 dicatat. Donatur resmi AKTIF!','ok');
-      closeModal('ovBayar'); loadBayar(); loadStats(); loadSemua(); loadAktif();
+      closeModal('ovBayar'); loadBayar(); loadStats(); loadSemua(); loadAktif(); loadProspek();
       return;
     }
   }
