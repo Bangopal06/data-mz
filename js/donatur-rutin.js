@@ -87,8 +87,8 @@ function loadSemua() {
     <td style="font-size:12px">${d.petugas||'-'}</td>
     <td><div class="td-actions">
       ${d._type==='donatur'?`
+        <button class="btn btn-success btn-sm" onclick="openModalBayar('${d.id}')">💰 Catat</button>
         <button class="btn btn-ghost btn-sm btn-icon" onclick="detailDonatur('${d.id}')">👁</button>
-        <button class="btn btn-ghost btn-sm btn-icon" onclick="openModalBayar('${d.id}')">💰</button>
         <button class="btn btn-ghost btn-sm btn-icon" onclick="openModalDonatur('${d.id}')">✏️</button>
         <button class="btn btn-ghost btn-sm btn-icon" onclick="hapusDonatur('${d.id}')">🗑️</button>`:`
         <button class="btn btn-success btn-sm" onclick="jadikanDonatur('${d.id}')">✓ Aktifkan</button>
@@ -117,8 +117,8 @@ function loadAktif() {
     <td style="font-size:12px">${tgl(d.tgl_mulai)}</td>
     <td>${badge(d.status)}</td>
     <td><div class="td-actions">
+      <button class="btn btn-success btn-sm" onclick="openModalBayar('${d.id}')">💰 Catat</button>
       <button class="btn btn-ghost btn-sm btn-icon" onclick="detailDonatur('${d.id}')">👁</button>
-      <button class="btn btn-ghost btn-sm btn-icon" onclick="openModalBayar('${d.id}')">💰</button>
       <button class="btn btn-ghost btn-sm btn-icon" onclick="openModalDonatur('${d.id}')">✏️</button>
       <button class="btn btn-ghost btn-sm btn-icon" onclick="hapusDonatur('${d.id}')">🗑️</button>
     </div></td></tr>`).join('')
@@ -292,8 +292,13 @@ window.openModalBayar=function(donaturId=null){
         <div class="fgrid">
           <div class="fg"><label class="flabel">Tanggal *</label><input type="date" id="bTgl" class="fctrl" value="${new Date().toISOString().split('T')[0]}"></div>
           <div class="fg"><label class="flabel">Nominal (Rp) *</label><input type="number" id="bNominal" class="fctrl" value="${sel?.nominal||''}"></div>
+          <div class="fg"><label class="flabel">Metode Bayar</label>
+            <select id="bMetode" class="fctrl">
+              ${['transfer','tunai','qris','auto_debit'].map(m=>`<option value="${m}" ${sel?.metode===m?'selected':''}>${m}</option>`).join('')}
+            </select>
+          </div>
           <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('bPetugas', sel?.petugas||'')}</div>
-          <div class="fg"><label class="flabel">Catatan</label><input id="bCatatan" class="fctrl" placeholder="Opsional"></div>
+          <div class="fg fcol2"><label class="flabel">Catatan</label><input id="bCatatan" class="fctrl" placeholder="Opsional"></div>
         </div>
       </div>
       <div class="modal-foot">
@@ -307,6 +312,7 @@ window.openModalBayar=function(donaturId=null){
 window.onPilihDonatur=function(sel){
   const d=DB.get('donatur_rutin').find(x=>x.id===sel.value); if(!d) return;
   const n=document.getElementById('bNominal'); if(n) n.value=d.nominal||'';
+  const m=document.getElementById('bMetode'); if(m) m.value=d.metode||'transfer';
 };
 
 window.saveBayar=async function(){
@@ -317,7 +323,8 @@ window.saveBayar=async function(){
   const donatur=DB.get('donatur_rutin').find(d=>d.id===donaturId);
   if(!await confirmSave(`Catat pembayaran <strong>${rupiah(nominal)}</strong> untuk <strong>${donatur?.nama}</strong>?`)) return;
   const r=await DB.insert('pembayaran_rutin',{donatur_id:donaturId,nama_donatur:donatur?.nama,
-    nominal,tgl_bayar:tglBayar,metode:donatur?.metode||'transfer',
+    nominal,tgl_bayar:tglBayar,
+    metode:document.getElementById('bMetode')?.value||donatur?.metode||'transfer',
     petugas:getPetugas('bPetugas'),
     catatan:document.getElementById('bCatatan').value.trim()});
   if(!r){toast('Gagal menyimpan','err');return;}
