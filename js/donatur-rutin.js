@@ -108,12 +108,12 @@ function loadSemua() {
 window.goPgSemua=p=>{pgSemua=p;loadSemua();};
 
 function loadAktif() {
-  let data=DB.get('donatur_rutin').filter(d=>d.status==='aktif');
+  let data=DB.get('donatur_rutin').filter(d=>d.status==='aktif' || d.status==='menunggu');
   const sr=document.getElementById('srAktif')?.value.toLowerCase()||'';
   const prog=document.getElementById('flProgram')?.value||'';
   if(sr) data=data.filter(d=>d.nama?.toLowerCase().includes(sr));
   if(prog) data=data.filter(d=>d.program===prog);
-  const cnt=document.getElementById('cntAktif'); if(cnt) cnt.textContent=DB.get('donatur_rutin').filter(d=>d.status==='aktif').length;
+  const cnt=document.getElementById('cntAktif'); if(cnt) cnt.textContent=DB.get('donatur_rutin').filter(d=>d.status==='aktif'||d.status==='menunggu').length;
   const {items,total}=paginate(data,pgAktif,PS);
   const tbody=document.getElementById('tblAktif'); if(!tbody) return;
   tbody.innerHTML=items.length?items.map(d=>`<tr>
