@@ -253,7 +253,7 @@ window.saveDonatur=async function(id){
   if(!r){toast('Gagal menyimpan','err');return;}
   await DB.sync('donatur_rutin');
   toast(id?'Data diperbarui':'Donatur ditambahkan','ok');
-  closeModal('ovDonatur');loadStats();loadSemua();loadAktif();loadProgramFilter();
+  closeModal('ovDonatur');loadStats();loadSemua();loadAktif();loadProspek();loadProgramFilter();
 };
 
 window.hapusDonatur=async function(id){
