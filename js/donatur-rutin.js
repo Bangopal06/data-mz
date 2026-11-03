@@ -45,13 +45,20 @@ async function loadAllData() {
 
 function loadStats() {
   const dr=DB.get('donatur_rutin'), pr=DB.get('prospek_rutin');
-  const total=dr.filter(d=>d.status==='aktif').reduce((s,d)=>s+(+d.nominal||0),0);
+  const totalAktif=dr.filter(d=>d.status==='aktif').reduce((s,d)=>s+(+d.nominal||0),0);
+  const totalMenunggu=dr.filter(d=>d.status==='menunggu').reduce((s,d)=>s+(+d.nominal||0),0);
+  const totalSemua = totalAktif + totalMenunggu;
+  // Total dari riwayat bayar bulan ini (lebih akurat)
+  const bulanIni = new Date().toISOString().slice(0,7);
+  const totalBayarBulanIni = DB.get('pembayaran_rutin')
+    .filter(p=>p.tgl_bayar?.startsWith(bulanIni))
+    .reduce((s,p)=>s+(+p.nominal||0),0);
   const el=document.getElementById('drStats'); if(!el) return;
   el.innerHTML=`
     <div class="stat"><div class="stat-ico ic-green">💚</div><div class="stat-body"><div class="lbl">Donatur Aktif</div><div class="val">${dr.filter(d=>d.status==='aktif').length}</div></div></div>
-    <div class="stat"><div class="stat-ico ic-blue">👤</div><div class="stat-body"><div class="lbl">Donatur Baru</div><div class="val">${pr.length}</div></div></div>
-    <div class="stat"><div class="stat-ico ic-red">⚠️</div><div class="stat-body"><div class="lbl">Tidak Aktif</div><div class="val">${dr.filter(d=>d.status!=='aktif').length}</div></div></div>
-    <div class="stat"><div class="stat-ico ic-teal">💰</div><div class="stat-body"><div class="lbl">Total Donasi/Bulan</div><div class="val rupiah" style="font-size:15px">${rupiah(total)}</div></div></div>`;
+    <div class="stat"><div class="stat-ico ic-blue">👤</div><div class="stat-body"><div class="lbl">Donatur Baru</div><div class="val">${pr.length}</div><div class="sub">${dr.filter(d=>d.status==='menunggu').length} menunggu aktif</div></div></div>
+    <div class="stat"><div class="stat-ico ic-red">⚠️</div><div class="stat-body"><div class="lbl">Tidak Aktif</div><div class="val">${dr.filter(d=>d.status!=='aktif'&&d.status!=='menunggu').length}</div></div></div>
+    <div class="stat"><div class="stat-ico ic-teal">💰</div><div class="stat-body"><div class="lbl">Terkumpul Bulan Ini</div><div class="val rupiah" style="font-size:14px">${rupiah(totalBayarBulanIni)}</div><div class="sub">Target: ${rupiah(totalSemua)}/bln</div></div></div>`;
 }
 
 function loadProgramFilter() {
