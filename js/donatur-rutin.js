@@ -1,4 +1,4 @@
-﻿// =============================================
+﻿﻿// =============================================
 // DONATUR RUTIN — Supabase version
 // =============================================
 
@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('btnTambah')?.addEventListener('click', () => {
     const t = document.querySelector('#drTabs .tab.active')?.dataset.target;
-    if (t==='paneProspek') openModalProspek();
+    if (t==='paneProspek') openModalDonaturMenunggu(); // tambah donatur baru langsung ke donatur_rutin
     else if (t==='panePembayaran') openModalBayar();
     else openModalDonatur();
   });
@@ -135,31 +135,37 @@ function loadAktif() {
 window.goPgAktif=p=>{pgAktif=p;loadAktif();};
 
 function loadProspek() {
-  let data=DB.get('prospek_rutin');
-  const sr=document.getElementById('srProspek')?.value.toLowerCase()||'';
-  const st=document.getElementById('flProspekStatus')?.value||'';
-  if(sr) data=data.filter(d=>d.nama?.toLowerCase().includes(sr));
-  if(st) data=data.filter(d=>d.status===st);
-  const cnt=document.getElementById('cntProspek'); if(cnt) cnt.textContent=data.length;
-  const {items,total}=paginate(data,pgProspek,PS);
-  const tbody=document.getElementById('tblProspek'); if(!tbody) return;
-  tbody.innerHTML=items.length?items.map(d=>`<tr>
-    <td class="td-name">${d.nama}</td>
-    <td class="td-mono">${d.hp||'-'}</td>
-    <td style="font-size:12px">${d.kota||'-'}</td>
-    <td class="rupiah" style="font-weight:600;color:var(--success)">${d.nominal_potensi?rupiah(d.nominal_potensi):'—'}</td>
-    <td style="font-size:12px">${d.program||'-'}</td>
-    <td>${badge(d.status)}</td>
-    <td style="font-size:12px">${d.petugas_prospek||d.petugas||'-'}</td>
-    <td style="font-size:12px;color:var(--gray-500);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.catatan||'-'}</td>
-    <td><div class="td-actions">
-      <button class="btn btn-success btn-sm" onclick="jadikanDonatur('${d.id}')">✓ Aktifkan</button>
-      <button class="btn btn-ghost btn-sm btn-icon" onclick="openModalProspek('${d.id}')">✏️</button>
-      <button class="btn btn-ghost btn-sm btn-icon" onclick="hapusProspek('${d.id}')">🗑️</button>
-    </div></td></tr>`).join('')
-  :`<tr><td colspan="8"><div class="empty"><div class="ei">👤</div><div class="et">Belum ada Donatur Baru</div></div></td></tr>`;
-  renderPagination('pagProspek',total,pgProspek,PS,'goPgProspek');
+  // Tab Donatur Baru = donatur_rutin status 'menunggu'
+  let data = DB.get('donatur_rutin').filter(d => d.status === 'menunggu');
+  const sr = document.getElementById('srProspek')?.value.toLowerCase()||'';
+  if (sr) data = data.filter(d => d.nama?.toLowerCase().includes(sr));
+  const cnt = document.getElementById('cntProspek'); if(cnt) cnt.textContent = data.length;
+  const {items, total} = paginate(data, pgProspek, PS);
+  const tbody = document.getElementById('tblProspek'); if(!tbody) return;
+  tbody.innerHTML = items.length ? items.map(d => {
+    const jmlBayar = DB.get('pembayaran_rutin').filter(p=>p.donatur_id===d.id).length;
+    return `<tr>
+      <td class="td-name">${d.nama}</td>
+      <td class="td-mono">${d.hp||'-'}</td>
+      <td style="font-size:12px">${d.kota||'-'}</td>
+      <td class="rupiah" style="font-weight:600;color:var(--success)">${rupiah(d.nominal)}</td>
+      <td style="font-size:12px">${d.program||'-'}</td>
+      <td style="font-size:12px">${tgl(d.tgl_mulai)}</td>
+      <td style="text-align:center">
+        <span class="badge ${jmlBayar>=1?'b-green':'b-gray'}">${jmlBayar}x bayar</span>
+      </td>
+      <td style="font-size:12px">${d.petugas||'-'}</td>
+      <td><div class="td-actions">
+        <button class="btn btn-success btn-sm" onclick="openModalBayar('${d.id}')">💰 Catat</button>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="openModalDonatur('${d.id}')">✏️</button>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="hapusDonatur('${d.id}')">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join('')
+  : `<tr><td colspan="9"><div class="empty"><div class="ei">👤</div><div class="et">Belum ada Donatur Baru</div></div></td></tr>`;
+  renderPagination('pagProspek', total, pgProspek, PS, 'goPgProspek');
 }
+
 window.goPgProspek=p=>{pgProspek=p;loadProspek();};
 
 function loadBayar() {
@@ -186,8 +192,15 @@ function loadBayar() {
 window.goPgBayar=p=>{pgBayar=p;loadBayar();};
 
 // ---- MODAL DONATUR ----
-window.openModalDonatur=function(id=null){
+// Tambah donatur baru langsung ke donatur_rutin dengan status menunggu
+window.openModalDonaturMenunggu = function() {
+  // Buka modal donatur biasa tapi paksa status = menunggu
+  openModalDonatur(null, true);
+};
+
+window.openModalDonatur=function(id=null, forceMenunggu=false){
   const d=id?DB.get('donatur_rutin').find(x=>x.id===id):null;
+  const defaultStatus = forceMenunggu ? 'menunggu' : (d?.status||'aktif');
   document.body.insertAdjacentHTML('beforeend',`<div class="overlay" id="ovDonatur">
     <div class="modal modal-lg">
       <div class="modal-head"><h3>${d?'Edit':'Tambah'} Donatur Rutin</h3><button class="modal-close" onclick="closeModal('ovDonatur')">✕</button></div>
@@ -212,7 +225,7 @@ window.openModalDonatur=function(id=null){
           </div>
           <div class="fg"><label class="flabel">Tgl Mulai</label><input type="date" id="dMulai" class="fctrl" value="${tglInput(d?.tgl_mulai)||new Date().toISOString().split('T')[0]}"></div>
           <div class="fg"><label class="flabel">Status</label>
-            <select id="dStatus" class="fctrl">${['aktif','tidak_aktif','berhenti'].map(s=>`<option value="${s}" ${d?.status===s?'selected':''}>${s}</option>`).join('')}</select>
+            <select id="dStatus" class="fctrl">${['aktif','menunggu','tidak_aktif','berhenti'].map(s=>`<option value="${s}" ${(d?.status||defaultStatus)===s?'selected':''}>${s==='menunggu'?'Menunggu (Baru)':s}</option>`).join('')}</select>
           </div>
           <div class="fg fcol2"><label class="flabel">Catatan</label><textarea id="dCatatan" class="fctrl">${d?.catatan||''}</textarea></div>
         </div>
@@ -286,7 +299,7 @@ window.detailDonatur=function(id){
 
 // ---- CATAT BAYAR ----
 window.openModalBayar=function(donaturId=null){
-  const dr=DB.get('donatur_rutin').filter(d=>d.status==='aktif');
+  const dr=DB.get('donatur_rutin').filter(d=>d.status==='aktif'||d.status==='menunggu');
   const sel=dr.find(d=>d.id===donaturId);
   const opsi=dr.map(d=>`<option value="${d.id}" ${d.id===donaturId?'selected':''}>${d.nama} — ${rupiah(d.nominal)}/bln</option>`).join('');
   document.body.insertAdjacentHTML('beforeend',`<div class="overlay" id="ovBayar">
