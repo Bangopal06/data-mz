@@ -1,4 +1,4 @@
-// =============================================
+﻿// =============================================
 // SHARED UTILITIES - Supabase version
 // =============================================
 
@@ -72,7 +72,7 @@ function badge(status) {
     mingguan:'b-blue', bulanan:'b-purple', dua_mingguan:'b-teal',
     masjid:'b-green', kesehatan:'b-teal', pendidikan:'b-blue', sosial:'b-purple' };
   const labels = { aktif:'Aktif', baru:'Baru', dihubungi:'Dihubungi', survei:'Survei',
-    tidak_aktif:'Tidak Aktif', berhenti:'Berhenti', menunggu:'Menunggu',
+    tidak_aktif:'Tidak Aktif', berhenti:'Berhenti', menunggu:'baru',
     lunas:'Lunas', cicilan:'Cicilan', pending:'Pending',
     mingguan:'Mingguan', bulanan:'Bulanan', dua_mingguan:'2 Mingguan',
     masjid:'Masjid', kesehatan:'Kesehatan', pendidikan:'Pendidikan', sosial:'Sosial' };

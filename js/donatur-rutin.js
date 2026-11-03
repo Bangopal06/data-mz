@@ -46,7 +46,7 @@ async function loadAllData() {
 function loadStats() {
   const dr=DB.get('donatur_rutin'), pr=DB.get('prospek_rutin');
   const totalAktif=dr.filter(d=>d.status==='aktif').reduce((s,d)=>s+(+d.nominal||0),0);
-  const totalMenunggu=dr.filter(d=>d.status==='menunggu').reduce((s,d)=>s+(+d.nominal||0),0);
+  const totalMenunggu=dr.filter(d=>d.status==='baru').reduce((s,d)=>s+(+d.nominal||0),0);
   const totalSemua = totalAktif + totalMenunggu;
   // Total dari riwayat bayar bulan ini (lebih akurat)
   const bulanIni = new Date().toISOString().slice(0,7);
@@ -56,8 +56,8 @@ function loadStats() {
   const el=document.getElementById('drStats'); if(!el) return;
   el.innerHTML=`
     <div class="stat"><div class="stat-ico ic-green">💚</div><div class="stat-body"><div class="lbl">Donatur Aktif</div><div class="val">${dr.filter(d=>d.status==='aktif').length}</div></div></div>
-    <div class="stat"><div class="stat-ico ic-blue">👤</div><div class="stat-body"><div class="lbl">Donatur Baru</div><div class="val">${pr.length}</div><div class="sub">${dr.filter(d=>d.status==='menunggu').length} menunggu aktif</div></div></div>
-    <div class="stat"><div class="stat-ico ic-red">⚠️</div><div class="stat-body"><div class="lbl">Tidak Aktif</div><div class="val">${dr.filter(d=>d.status!=='aktif'&&d.status!=='menunggu').length}</div></div></div>
+    <div class="stat"><div class="stat-ico ic-blue">👤</div><div class="stat-body"><div class="lbl">Donatur Baru</div><div class="val">${pr.length}</div><div class="sub">${dr.filter(d=>d.status==='baru').length} menunggu aktif</div></div></div>
+    <div class="stat"><div class="stat-ico ic-red">⚠️</div><div class="stat-body"><div class="lbl">Tidak Aktif</div><div class="val">${dr.filter(d=>d.status!=='aktif'&&d.status!=='baru').length}</div></div></div>
     <div class="stat"><div class="stat-ico ic-teal">💰</div><div class="stat-body"><div class="lbl">Terkumpul Bulan Ini</div><div class="val rupiah" style="font-size:14px">${rupiah(totalBayarBulanIni)}</div><div class="sub">Target: ${rupiah(totalSemua)}/bln</div></div></div>`;
 }
 
@@ -108,12 +108,12 @@ function loadSemua() {
 window.goPgSemua=p=>{pgSemua=p;loadSemua();};
 
 function loadAktif() {
-  let data=DB.get('donatur_rutin').filter(d=>d.status==='aktif' || d.status==='menunggu');
+  let data=DB.get('donatur_rutin').filter(d=>d.status==='aktif' || d.status==='baru');
   const sr=document.getElementById('srAktif')?.value.toLowerCase()||'';
   const prog=document.getElementById('flProgram')?.value||'';
   if(sr) data=data.filter(d=>d.nama?.toLowerCase().includes(sr));
   if(prog) data=data.filter(d=>d.program===prog);
-  const cnt=document.getElementById('cntAktif'); if(cnt) cnt.textContent=DB.get('donatur_rutin').filter(d=>d.status==='aktif'||d.status==='menunggu').length;
+  const cnt=document.getElementById('cntAktif'); if(cnt) cnt.textContent=DB.get('donatur_rutin').filter(d=>d.status==='aktif'||d.status==='baru').length;
   const {items,total}=paginate(data,pgAktif,PS);
   const tbody=document.getElementById('tblAktif'); if(!tbody) return;
   tbody.innerHTML=items.length?items.map(d=>`<tr>
@@ -135,8 +135,8 @@ function loadAktif() {
 window.goPgAktif=p=>{pgAktif=p;loadAktif();};
 
 function loadProspek() {
-  // Tab Donatur Baru = donatur_rutin status 'menunggu'
-  let data = DB.get('donatur_rutin').filter(d => d.status === 'menunggu');
+  // Tab Donatur Baru = donatur_rutin status 'baru'
+  let data = DB.get('donatur_rutin').filter(d => d.status === 'baru');
   const sr = document.getElementById('srProspek')?.value.toLowerCase()||'';
   if (sr) data = data.filter(d => d.nama?.toLowerCase().includes(sr));
   const cnt = document.getElementById('cntProspek'); if(cnt) cnt.textContent = data.length;
@@ -200,7 +200,7 @@ window.openModalDonaturMenunggu = function() {
 
 window.openModalDonatur=function(id=null, forceMenunggu=false){
   const d=id?DB.get('donatur_rutin').find(x=>x.id===id):null;
-  const defaultStatus = forceMenunggu ? 'menunggu' : (d?.status||'aktif');
+  const defaultStatus = forceMenunggu ? 'baru' : (d?.status||'aktif');
   document.body.insertAdjacentHTML('beforeend',`<div class="overlay" id="ovDonatur">
     <div class="modal modal-lg">
       <div class="modal-head"><h3>${d?'Edit':'Tambah'} Donatur Rutin</h3><button class="modal-close" onclick="closeModal('ovDonatur')">✕</button></div>
@@ -225,7 +225,7 @@ window.openModalDonatur=function(id=null, forceMenunggu=false){
           </div>
           <div class="fg"><label class="flabel">Tgl Mulai</label><input type="date" id="dMulai" class="fctrl" value="${tglInput(d?.tgl_mulai)||new Date().toISOString().split('T')[0]}"></div>
           <div class="fg"><label class="flabel">Status</label>
-            <select id="dStatus" class="fctrl">${['aktif','menunggu','tidak_aktif','berhenti'].map(s=>`<option value="${s}" ${(d?.status||defaultStatus)===s?'selected':''}>${s==='menunggu'?'Menunggu (Baru)':s}</option>`).join('')}</select>
+            <select id="dStatus" class="fctrl">${['aktif','baru','tidak_aktif','berhenti'].map(s=>`<option value="${s}" ${(d?.status||defaultStatus)===s?'selected':''}>${s==='baru'?'Baru':s}</option>`).join('')}</select>
           </div>
           <div class="fg fcol2"><label class="flabel">Catatan</label><textarea id="dCatatan" class="fctrl">${d?.catatan||''}</textarea></div>
         </div>
@@ -253,7 +253,7 @@ window.saveDonatur=async function(id){
   if(!r){toast('Gagal menyimpan','err');return;}
 
   // Jika tambah baru dengan status menunggu, otomatis catat pembayaran pertama
-  if (!id && payload.status === 'menunggu' && nominal > 0) {
+  if (!id && payload.status === 'baru' && nominal > 0) {
     await DB.insert('pembayaran_rutin', {
       donatur_id: r.id,
       nama_donatur: nama,
@@ -314,7 +314,7 @@ window.detailDonatur=function(id){
 
 // ---- CATAT BAYAR ----
 window.openModalBayar=function(donaturId=null){
-  const dr=DB.get('donatur_rutin').filter(d=>d.status==='aktif'||d.status==='menunggu');
+  const dr=DB.get('donatur_rutin').filter(d=>d.status==='aktif'||d.status==='baru');
   const sel=dr.find(d=>d.id===donaturId);
   const opsi=dr.map(d=>`<option value="${d.id}" ${d.id===donaturId?'selected':''}>${d.nama} — ${rupiah(d.nominal)}/bln</option>`).join('');
   document.body.insertAdjacentHTML('beforeend',`<div class="overlay" id="ovBayar">
@@ -366,7 +366,7 @@ window.saveBayar=async function(){
   await DB.sync('pembayaran_rutin');
 
   // Cek auto-aktifkan: jika donatur ini berasal dari prospek dan pembayaran ini adalah bulan ke-2
-  if (donatur?.status === 'menunggu') {
+  if (donatur?.status === 'baru') {
     const allBayar = DB.get('pembayaran_rutin').filter(p=>p.donatur_id===donaturId);
     if (allBayar.length >= 2) {
       await DB.update('donatur_rutin', donaturId, {
@@ -474,7 +474,7 @@ window.jadikanDonatur=async function(id){
     nominal:p.nominal_potensi||0,
     metode:p.metode||'transfer',
     tgl_mulai:p.tgl_mulai||new Date().toISOString().split('T')[0],
-    status:'menunggu',
+    status:'baru',
     catatan:((p.catatan||'')+' [dari_prospek]').trim()
   });
   if(!r){toast('Gagal','err');return;}
