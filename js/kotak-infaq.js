@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btnTambahKI').addEventListener('click', () => {
     const tab = document.querySelector('#kiTabs .tab.active').dataset.target;
     if (tab === 'paneKotak') openModalKotak();
-    else if (tab === 'paneProspekKotak') openModalProsKotak();
+    else if (tab === 'paneProspekKotak') openModalKotakBaru();
     else openModalAmbil();
   });
 
@@ -21,7 +21,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     await Promise.all([
       DB.sync('kotak_infaq'),
-      DB.sync('prospek_kotak'),
       DB.sync('pengambilan_kotak')
     ]);
   } catch(e) { console.warn('Sync error:', e); }
@@ -37,13 +36,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function loadKiStats() {
   const ki = DB.get('kotak_infaq');
-  const pk = DB.get('prospek_kotak');
+  const jmlBaru = DB.get('kotak_infaq').filter(k=>k.status==='baru').length;
   const pa = DB.get('pengambilan_kotak');
   const totalInfaq = ki.filter(k=>k.status==='aktif').reduce((s,k)=>s+(+k.nominal_terakhir||0),0);
   const totalAll = pa.reduce((s,a)=>s+(+a.nominal||0),0);
   document.getElementById('kiStats').innerHTML = `
     <div class="stat"><div class="stat-ico ic-orange">🗃️</div><div class="stat-body"><div class="lbl">Kotak Aktif</div><div class="val">${ki.filter(k=>k.status==='aktif').length}</div><div class="sub">${ki.length} total kotak</div></div></div>
-    <div class="stat"><div class="stat-ico ic-blue">👤</div><div class="stat-body"><div class="lbl">Kotak Baru</div><div class="val">${pk.length}</div><div class="sub">Lokasi baru</div></div></div>
+    <div class="stat"><div class="stat-ico ic-blue">👤</div><div class="stat-body"><div class="lbl">Kotak Baru</div><div class="val">${pk.length}</div><div class="sub">Belum diambil pertama</div></div></div>
     <div class="stat"><div class="stat-ico ic-green">💰</div><div class="stat-body"><div class="lbl">Infaq Terakhir</div><div class="val rupiah" style="font-size:15px">${rupiah(totalInfaq)}</div></div></div>
     <div class="stat"><div class="stat-ico ic-teal">📊</div><div class="stat-body"><div class="lbl">Total Terkumpul</div><div class="val rupiah" style="font-size:15px">${rupiah(totalAll)}</div></div></div>
   `;
@@ -98,11 +97,12 @@ function loadKotak() {
 window.goPgKotak = p => { pgKotak=p; loadKotak(); };
 
 // ============ MODAL KOTAK ============
-window.openModalKotak = function(id=null) {
+window.openModalKotak = function(id=null, forceStatus=false) {
   const k = id ? DB.get('kotak_infaq').find(x=>x.id===id) : null;
+  const defaultStatus = forceStatus ? 'baru' : (k?.status||'aktif');
   const html = `<div class="overlay" id="ovKotak">
     <div class="modal modal-lg">
-      <div class="modal-head"><h3>${k?'Edit':'Tambah'} Kotak Infaq</h3><button class="modal-close" onclick="closeModal('ovKotak')">✕</button></div>
+      <div class="modal-head"><h3>${k?'Edit':(forceStatus?'Tambah Kotak Baru':'Tambah')} Kotak Infaq</h3><button class="modal-close" onclick="closeModal('ovKotak')">✕</button></div>
       <div class="modal-body">
         <div class="sec-div">Data Kotak & Lokasi</div>
         <div class="fgrid">
@@ -124,7 +124,7 @@ window.openModalKotak = function(id=null) {
           <div class="fg"><label class="flabel">Nominal Terakhir (Rp)</label><input type="number" id="kNominal" class="fctrl" value="${k?.nominal_terakhir||''}"></div>
           <div class="fg"><label class="flabel">Tgl Pengambilan Terakhir</label><input type="date" id="kTglAmbil" class="fctrl" value="${tglInput(k?.tgl_ambil)||''}"></div>
           <div class="fg"><label class="flabel">Status</label>
-            <select id="kStatus" class="fctrl">${['aktif','tidak_aktif'].map(s=>`<option value="${s}" ${k?.status===s?'selected':''}>${s}</option>`).join('')}</select>
+            <select id="kStatus" class="fctrl">${['baru','aktif','tidak_aktif'].map(s=>`<option value="${s}" ${defaultStatus===s?'selected':''}>${s==='baru'?'Baru':s}</option>`).join('')}</select>
           </div>
           <div class="fg fcol2"><label class="flabel">Catatan</label><textarea id="kCatatan" class="fctrl">${k?.catatan||''}</textarea></div>
         </div>
@@ -171,7 +171,7 @@ window.saveKotak = async function(id) {
   if(!r){toast('Gagal menyimpan','err');return;}
   await DB.sync('kotak_infaq');
   toast(id?'Data diperbarui':'Kotak berhasil ditambahkan','ok');
-  closeModal('ovKotak'); loadKiStats(); loadKotak();
+  closeModal('ovKotak'); loadKiStats(); loadKotak(); loadProsKotak();
 };
 
 window.hapusKotak = async function(id) {
@@ -184,7 +184,7 @@ window.hapusKotak = async function(id) {
 // ============ CATAT PENGAMBILAN ============
 window.openModalAmbil = function(kotakId=null) {
   const kotak = DB.get('kotak_infaq');
-  const opsi = kotak.filter(k=>k.status==='aktif').map(k=>`<option value="${k.id}" ${k.id===kotakId?'selected':''}>${k.nama_kotak} - ${k.nama_toko}</option>`).join('');
+  const opsi = kotak.filter(k=>k.status==='aktif'||k.status==='baru').map(k=>`<option value="${k.id}" ${k.id===kotakId?'selected':''}>${k.nama_kotak} - ${k.nama_toko}${k.status==='baru'?' (Baru)':''}</option>`).join('');
   const html = `<div class="overlay" id="ovAmbil">
     <div class="modal" style="max-width:460px">
       <div class="modal-head"><h3>📦 Catat Pengambilan Infaq</h3><button class="modal-close" onclick="closeModal('ovAmbil')">✕</button></div>
@@ -215,12 +215,24 @@ window.saveAmbil = async function() {
   const kotak = DB.get('kotak_infaq').find(k=>k.id===kotakId);
   const ok = await confirmSave(`Catat pengambilan <strong>${rupiah(nominal)}</strong> dari <strong>${kotak?.nama_kotak}</strong>?`);
   if (!ok) return;
-  await DB.update('kotak_infaq', kotakId, { nominal_terakhir: nominal, tgl_ambil: tglAmbil });
+
+  // Jika kotak status 'baru', auto-aktifkan saat pertama diambil
+  const updatePayload = { nominal_terakhir: nominal, tgl_ambil: tglAmbil };
+  if (kotak?.status === 'baru') {
+    updatePayload.status = 'aktif';
+  }
+  await DB.update('kotak_infaq', kotakId, updatePayload);
+
   const r = await DB.insert('pengambilan_kotak', { kotak_id:kotakId, nama_kotak:kotak?.nama_kotak, nama_toko:kotak?.nama_toko, tgl_ambil:tglAmbil, nominal, petugas:getPetugas('aPetugas'), catatan:document.getElementById('aCatatan').value.trim() });
   if(!r){toast('Gagal','err');return;}
   await Promise.all([DB.sync('kotak_infaq'),DB.sync('pengambilan_kotak')]);
-  toast('Pengambilan berhasil dicatat','ok');
-  closeModal('ovAmbil'); loadKiStats(); loadKotak(); loadAmbilByBulan();
+
+  if (kotak?.status === 'baru') {
+    toast(`✅ Pengambilan dicatat. ${kotak.nama_toko} sekarang AKTIF!`,'ok');
+  } else {
+    toast('Pengambilan berhasil dicatat','ok');
+  }
+  closeModal('ovAmbil'); loadKiStats(); loadKotak(); loadProsKotak(); loadAmbilByBulan();
 };
 
 // ============ RIWAYAT PENGAMBILAN ============
@@ -345,31 +357,41 @@ window.hapusAmbilById = window.hapusAmbil;
 
 // ============ Kotak Baru ============
 function loadProsKotak() {
-  let data = DB.get('prospek_kotak');
+  // Tab Kotak Baru = kotak_infaq status 'baru'
+  let data = DB.get('kotak_infaq').filter(k => k.status === 'baru');
   const sr = document.getElementById('srProsKotak').value.toLowerCase();
-  const st = document.getElementById('flProsKotakStatus').value;
-  if (sr) data = data.filter(d=>d.nama_toko?.toLowerCase().includes(sr)||d.pemilik?.toLowerCase().includes(sr));
-  if (st) data = data.filter(d=>d.status===st);
+  if (sr) data = data.filter(d=>d.nama_kotak?.toLowerCase().includes(sr)||d.nama_toko?.toLowerCase().includes(sr)||d.pemilik?.toLowerCase().includes(sr));
   document.getElementById('cntProsKotak').textContent = data.length;
   const { items, total } = paginate(data, pgProsKotak, PS);
-  document.getElementById('tblProsKotak').innerHTML = items.length ? items.map(d=>`
-    <tr>
+  document.getElementById('tblProsKotak').innerHTML = items.length ? items.map(d => {
+    const jmlAmbil = DB.get('pengambilan_kotak').filter(a=>a.kotak_id===d.id).length;
+    return `<tr>
       <td class="td-name">${d.nama_toko}</td>
       <td>${d.pemilik||'-'}</td>
       <td class="td-mono">${d.hp||'-'}</td>
-      <td style="font-size:12px">${d.alamat||'-'}</td>
       <td style="font-size:12px">${d.kota||'-'}</td>
-      <td>${badge(d.status)}</td>
+      <td style="text-align:center"><span class="badge ${jmlAmbil>=1?'b-green':'b-gray'}">${jmlAmbil}x ambil</span></td>
       <td style="font-size:12px">${d.petugas||'-'}</td>
       <td><div class="td-actions">
-        <button class="btn btn-success btn-sm" onclick="jadikanKotakAktif('${d.id}')">✓ Pasang Kotak</button>
-        <button class="btn btn-ghost btn-sm btn-icon" onclick="openModalProsKotak('${d.id}')">✏️</button>
-        <button class="btn btn-ghost btn-sm btn-icon" onclick="hapusProsKotak('${d.id}')">🗑️</button>
+        <button class="btn btn-success btn-sm" onclick="openModalAmbil('${d.id}')">📦 Ambil</button>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="openModalKotak('${d.id}')">✏️</button>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="hapusKotak('${d.id}')">🗑️</button>
       </div></td>
-    </tr>`).join('') : `<tr><td colspan="8"><div class="empty"><div class="ei">👤</div><div class="et">Belum ada kotak baru</div></div></td></tr>`;
+    </tr>`;
+  }).join('') : `<tr><td colspan="7"><div class="empty"><div class="ei">🆕</div><div class="et">Belum ada kotak baru</div></div></td></tr>`;
   renderPagination('pagProsKotak', total, pgProsKotak, PS, 'goPgProsKotak');
 }
 window.goPgProsKotak = p => { pgProsKotak=p; loadProsKotak(); };
+
+// Tambah Kotak Baru langsung ke kotak_infaq status 'baru'
+window.openModalKotakBaru = function() {
+  openModalKotak(null, true); // forceStatus = baru
+};
+
+window.openModalProsKotak = function(id=null) {
+  // Keep for backward compat - redirect to openModalKotak
+  openModalKotak(id);
+};
 
 window.openModalProsKotak = function(id=null) {
   const d = id ? DB.get('prospek_kotak').find(x=>x.id===id) : null;
