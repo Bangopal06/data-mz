@@ -65,30 +65,15 @@ window.renderDonatur = function() {
   `;
 
   // DONATUR BARU BULAN INI — donatur yang tgl_mulai di periode ini dan berasal dari prospek
-  const donaturBaru = DB.get('donatur_rutin').filter(d => {
+  // DONATUR BARU BULAN INI — semua donatur tgl_mulai di periode ini
+  const donaturBaruList = DB.get('donatur_rutin').filter(d => {
     const tglMulai = d.tgl_mulai || '';
-    return tglMulai.startsWith(periode) && (d.catatan||'').includes('[dari_prospek]');
+    return tglMulai.startsWith(periode);
   });
-  // Juga cek dari pembayaran pertama yang bulan ini
-  const firstBayarIds = new Set();
-  bayarBulanIni.forEach(p => {
-    const allBayar = DB.get('pembayaran_rutin').filter(b=>b.donatur_id===p.donatur_id);
-    if (allBayar.length === 1) firstBayarIds.add(p.donatur_id); // hanya 1x bayar = baru
-  });
-  const donaturBaruIds = new Set([
-    ...donaturBaru.map(d=>d.id),
-    ...[...firstBayarIds].filter(id => {
-      const d = DB.get('donatur_rutin').find(x=>x.id===id);
-      return d && (d.catatan||'').includes('[dari_prospek]');
-    })
-  ]);
-  const donaturBaruList = [...new Set([...donaturBaru,
-    ...DB.get('donatur_rutin').filter(d=>donaturBaruIds.has(d.id))])];
 
   document.getElementById('cntDonaturBaru').textContent = donaturBaruList.length;
   const totalBaru = donaturBaruList.reduce((s,d)=>s+(+d.nominal||0),0);
 
-  // Ambil catatan petugas pengembang dari pembayaran pertama
   document.getElementById('tblDonaturBaru').innerHTML = donaturBaruList.length ? donaturBaruList.map(d => {
     const bayarPertama = DB.get('pembayaran_rutin').filter(b=>b.donatur_id===d.id)
       .sort((a,b)=>new Date(a.tgl_bayar)-new Date(b.tgl_bayar))[0];
@@ -97,7 +82,7 @@ window.renderDonatur = function() {
       <td class="rupiah" style="color:var(--success);font-weight:600">${rupiah(d.nominal)}</td>
       <td style="font-size:12px">${d.metode||'-'}</td>
       <td style="font-size:12px">${tgl(d.tgl_mulai)}</td>
-      <td style="font-size:12px;font-weight:600;color:#8b5cf6">${bayarPertama?.petugas||'-'}</td>
+      <td style="font-size:12px;font-weight:600;color:#8b5cf6">${bayarPertama?.petugas||d.petugas||'-'}</td>
       <td style="font-size:12px">${d.program||'-'}</td>
     </tr>`;
   }).join('') : `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--gray-400)">Tidak ada donatur baru bulan ini</td></tr>`;
