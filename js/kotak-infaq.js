@@ -118,7 +118,7 @@ window.openModalKotak = function(id=null, forceStatus=false) {
         <div class="sec-div">Data Operasional</div>
         <div class="fgrid">
           <div class="fg"><label class="flabel">Frekuensi Pengambilan</label>
-            <select id="kFrekuensi" class="fctrl">${['mingguan','dua_mingguan','bulanan'].map(f=>`<option value="${f}" ${k?.frekuensi===f?'selected':''}>${f}</option>`).join('')}</select>
+            <select id="kFrekuensi" class="fctrl">${['bulanan','dua_mingguan','mingguan'].map(f=>`<option value="${f}" ${(k?.frekuensi||'bulanan')===f?'selected':''}>${f}</option>`).join('')}</select>
           </div>
           <div class="fg"><label class="flabel">Petugas</label>${petugasSelect('kPetugas', k?.petugas||'')}</div>
           <div class="fg"><label class="flabel">Nominal Terakhir (Rp)</label><input type="number" id="kNominal" class="fctrl" value="${k?.nominal_terakhir||''}"></div>
