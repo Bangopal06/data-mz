@@ -2,54 +2,53 @@
 
 document.addEventListener('DOMContentLoaded', async () => {
   initFilter();
-  renderDonatur();
+  renderLaporan();
   await Promise.all([DB.sync('donatur_rutin'), DB.sync('pembayaran_rutin')]);
   initFilter();
-  renderDonatur();
+  renderLaporan();
 });
 
 function initFilter() {
   const now = new Date();
-  // Tahun
-  const selTahun = document.getElementById('flTahun');
   const tahunNow = now.getFullYear();
-  selTahun.innerHTML = [tahunNow, tahunNow-1, tahunNow-2].map(t =>
-    `<option value="${t}">${t}</option>`).join('');
-
-  // Bulan default = bulan ini
+  document.getElementById('flTahun').innerHTML =
+    [tahunNow, tahunNow-1, tahunNow-2].map(t => `<option value="${t}">${t}</option>`).join('');
   document.getElementById('flBulan').value = String(now.getMonth()+1).padStart(2,'0');
-
-  // Program
   const programs = [...new Set(DB.get('donatur_rutin').map(d => d.program).filter(Boolean))];
-  const sel = document.getElementById('flProgram');
-  sel.innerHTML = '<option value="">Semua Program</option>' + programs.map(p => `<option>${p}</option>`).join('');
+  document.getElementById('flProgram').innerHTML =
+    '<option value="">Semua Program</option>' + programs.map(p => `<option>${p}</option>`).join('');
 }
 
-window.renderDonatur = function() {
-  const bulan = document.getElementById('flBulan').value;
-  const tahun = document.getElementById('flTahun').value;
-  const program = document.getElementById('flProgram').value;
+window.renderLaporan = function() {
+  const bulan   = document.getElementById('flBulan').value;
+  const tahun   = document.getElementById('flTahun').value;
+  const prog    = document.getElementById('flProgram').value;
   const periode = `${tahun}-${bulan}`;
 
-  const donaturAktif = DB.get('donatur_rutin').filter(d =>
-    d.status === 'aktif' && (!program || d.program === program)
+  // Donatur aktif = sudah resmi, bukan yang masih status baru
+  const aktif = DB.get('donatur_rutin').filter(d =>
+    d.status === 'aktif' && (!prog || d.program === prog)
   );
 
-  const bayarBulanIni = DB.get('pembayaran_rutin').filter(p =>
+  // Donatur baru = masih menunggu bayar ke-2, ditampilkan terpisah
+  const donaturBaru = DB.get('donatur_rutin').filter(d => d.status === 'baru');
+
+  const bayarPeriode = DB.get('pembayaran_rutin').filter(p =>
     p.tgl_bayar && p.tgl_bayar.startsWith(periode)
   );
 
-  // Donatur yg sudah bayar bulan ini
-  const sudahIds = new Set(bayarBulanIni.map(p => p.donatur_id));
-  const sudah = donaturAktif.filter(d => sudahIds.has(d.id));
-  const belum = donaturAktif.filter(d => !sudahIds.has(d.id));
+  const sudahIds   = new Set(bayarPeriode.map(p => p.donatur_id));
+  const sudah      = aktif.filter(d =>  sudahIds.has(d.id));
+  const belum      = aktif.filter(d => !sudahIds.has(d.id));
 
-  const totalSudah = bayarBulanIni.reduce((s,p) => s+((+p.nominal)||0), 0);
-  const targetBulanan = donaturAktif.reduce((s,d) => s+((+d.nominal)||0), 0);
-  const pct = targetBulanan ? Math.round((totalSudah/targetBulanan)*100) : 0;
-  const totalBelum = donaturAktif.filter(d => !sudahIds.has(d.id)).reduce((s,d) => s+((+d.nominal)||0), 0);
+  const totalSudah    = bayarPeriode
+    .filter(p => aktif.find(a => a.id === p.donatur_id))
+    .reduce((s,p) => s+(+p.nominal||0), 0);
+  const targetBulanan = aktif.reduce((s,d) => s+(+d.nominal||0), 0);
+  const totalBelum    = belum.reduce((s,d) => s+(+d.nominal||0), 0);
+  const pct           = targetBulanan ? Math.round((totalSudah/targetBulanan)*100) : 0;
 
-  // Stats
+  // ── STAT CARDS ──
   document.getElementById('statsDonatur').innerHTML = `
     <div class="stat"><div class="stat-ico ic-green">✅</div><div class="stat-body">
       <div class="lbl">Sudah Bayar</div><div class="val">${sudah.length}</div>
@@ -57,133 +56,99 @@ window.renderDonatur = function() {
     <div class="stat"><div class="stat-ico ic-red">⏳</div><div class="stat-body">
       <div class="lbl">Belum Bayar</div><div class="val">${belum.length}</div>
       <div class="sub rupiah">${rupiah(totalBelum)}</div></div></div>
+    <div class="stat"><div class="stat-ico ic-blue">👤</div><div class="stat-body">
+      <div class="lbl">Donatur Baru</div><div class="val">${donaturBaru.length}</div>
+      <div class="sub">menunggu bayar ke-2</div></div></div>
     <div class="stat"><div class="stat-ico ic-teal">🎯</div><div class="stat-body">
-      <div class="lbl">Target Bulan Ini</div><div class="val rupiah" style="font-size:16px">${rupiah(targetBulanan)}</div></div></div>
-    <div class="stat"><div class="stat-ico ic-blue">📊</div><div class="stat-body">
-      <div class="lbl">Terkumpul</div><div class="val rupiah" style="font-size:16px">${rupiah(totalSudah)}</div>
-      <div class="sub">${pct}% dari target</div></div></div>
-  `;
+      <div class="lbl">Terkumpul / Target</div>
+      <div class="val rupiah" style="font-size:14px">${rupiah(totalSudah)}</div>
+      <div class="sub">${pct}% dari ${rupiah(targetBulanan)}</div></div></div>`;
 
-  // DONATUR BARU BULAN INI — donatur yang tgl_mulai di periode ini dan berasal dari prospek
-  // DONATUR BARU BULAN INI — semua donatur tgl_mulai di periode ini
-  const donaturBaruList = DB.get('donatur_rutin').filter(d => {
-    const tglMulai = d.tgl_mulai || '';
-    return tglMulai.startsWith(periode);
-  });
-
-  document.getElementById('cntDonaturBaru').textContent = donaturBaruList.length;
-  const totalBaru = donaturBaruList.reduce((s,d)=>s+(+d.nominal||0),0);
-
-  document.getElementById('tblDonaturBaru').innerHTML = donaturBaruList.length ? donaturBaruList.map(d => {
-    const bayarPertama = DB.get('pembayaran_rutin').filter(b=>b.donatur_id===d.id)
-      .sort((a,b)=>new Date(a.tgl_bayar)-new Date(b.tgl_bayar))[0];
-    return `<tr>
-      <td style="font-weight:600">${d.nama}</td>
-      <td class="rupiah" style="color:var(--success);font-weight:600">${rupiah(d.nominal)}</td>
-      <td style="font-size:12px">${d.metode||'-'}</td>
-      <td style="font-size:12px">${tgl(d.tgl_mulai)}</td>
-      <td style="font-size:12px;font-weight:600;color:#8b5cf6">${bayarPertama?.petugas||d.petugas||'-'}</td>
-      <td style="font-size:12px">${d.program||'-'}</td>
-    </tr>`;
-  }).join('') : `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--gray-400)">Tidak ada donatur baru bulan ini</td></tr>`;
-
-  document.getElementById('footDonaturBaru').innerHTML = donaturBaruList.length ? `
-    <tr><td>TOTAL (${donaturBaruList.length} donatur baru)</td>
-    <td class="rupiah" style="padding:10px 14px">${rupiah(totalBaru)}/bulan</td>
-    <td colspan="4"></td></tr>` : '';
-
-  // DONATUR BARU MENUNGGU AKTIF (status 'baru' di donatur_rutin)
-  const donaturMenunggu = DB.get('donatur_rutin').filter(d => d.status === 'baru');
-  const tblMenunggu = document.getElementById('tblMenungguAktif');
-  const cntMenunggu = document.getElementById('cntMenungguAktif');
-  if (cntMenunggu) cntMenunggu.textContent = donaturMenunggu.length;
-  if (tblMenunggu) {
-    tblMenunggu.innerHTML = donaturMenunggu.length ? donaturMenunggu.map(d => {
-      const jmlBayar = DB.get('pembayaran_rutin').filter(p=>p.donatur_id===d.id).length;
-      return `<tr>
-        <td style="font-weight:600">${d.nama}</td>
-        <td class="td-mono">${d.hp||'-'}</td>
-        <td class="rupiah" style="color:var(--success);font-weight:600">${rupiah(d.nominal)}</td>
-        <td style="font-size:12px">${d.metode||'-'}</td>
-        <td style="font-size:12px">${tgl(d.tgl_mulai)}</td>
-        <td style="text-align:center">
-          <span class="badge ${jmlBayar>=1?'b-green':'b-gray'}">${jmlBayar}x bayar</span>
-          ${jmlBayar===0?'<span style="font-size:11px;color:var(--danger)"> belum bayar</span>':''}
-        </td>
-        <td style="font-size:12px">${d.petugas||'-'}</td>
-      </tr>`;
-    }).join('')
-    : `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--gray-400)">Tidak ada donatur baru yang menunggu aktif</td></tr>`;
-  }
-
-  // Counter badge
+  // ── TABEL SUDAH BAYAR (donatur aktif saja) ──
   document.getElementById('cntSudah').textContent = sudah.length;
-  document.getElementById('cntBelum').textContent = belum.length;
-
-  // Tabel sudah bayar
   document.getElementById('tblSudahBayar').innerHTML = sudah.length ? sudah.map(d => {
-    const bayar = bayarBulanIni.filter(p => p.donatur_id === d.id);
-    return bayar.map((p,i) => `<tr style="${i===0?'':'background:#f9fafb'}">
+    const bayar = bayarPeriode.filter(p => p.donatur_id === d.id);
+    return bayar.map((p,i) => `<tr>
       ${i===0 ? `<td class="td-name" rowspan="${bayar.length}">${d.nama}</td>
-        <td class="td-mono" rowspan="${bayar.length}">${d.hp}</td>
+        <td class="td-mono" rowspan="${bayar.length}">${d.hp||'-'}</td>
         <td style="font-size:12px" rowspan="${bayar.length}">${d.program||'-'}</td>
         <td class="rupiah" style="font-size:12px" rowspan="${bayar.length}">${rupiah(d.nominal)}</td>` : ''}
       <td style="font-size:12px">${tgl(p.tgl_bayar)}</td>
       <td class="rupiah" style="font-weight:700;color:var(--success)">${rupiah(p.nominal)}</td>
       <td style="font-size:12px">${p.petugas||d.petugas||'-'}</td>
     </tr>`).join('');
-  }).join('') : `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--gray-400)">Belum ada yang membayar bulan ini</td></tr>`;
+  }).join('')
+  : `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--gray-400)">Belum ada yang membayar bulan ini</td></tr>`;
 
-  document.getElementById('footSudah').innerHTML = sudah.length ? `
-    <tr><td colspan="5" style="padding:10px 14px">TOTAL TERKUMPUL</td>
-      <td class="rupiah" style="padding:10px 14px;color:var(--success)">${rupiah(totalSudah)}</td><td></td></tr>` : '';
+  document.getElementById('footSudah').innerHTML = sudah.length
+    ? `<tr><td colspan="5" style="padding:10px 14px">TOTAL TERKUMPUL</td>
+       <td class="rupiah" style="padding:10px 14px;color:var(--success)">${rupiah(totalSudah)}</td><td></td></tr>` : '';
 
-  // Tabel belum bayar
+  // ── TABEL BELUM BAYAR (donatur aktif saja) ──
+  document.getElementById('cntBelum').textContent = belum.length;
   document.getElementById('tblBelumBayar').innerHTML = belum.length ? belum.map(d => `
     <tr>
       <td class="td-name">${d.nama}</td>
-      <td class="td-mono">${d.hp}</td>
+      <td class="td-mono">${d.hp||'-'}</td>
       <td style="font-size:12px">${d.alamat||'-'}</td>
       <td style="font-size:12px">${d.program||'-'}</td>
       <td class="rupiah" style="font-weight:600;color:var(--danger)">${rupiah(d.nominal)}</td>
       <td style="font-size:12px">${d.petugas||'-'}</td>
-      <td class="no-print">
-        <a href="donatur-rutin.html" class="btn btn-ghost btn-sm">📞 Hubungi</a>
+      <td class="no-print"><a href="donatur-rutin.html" class="btn btn-ghost btn-sm">📞 Hubungi</a></td>
+    </tr>`).join('')
+  : `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--success)">🎉 Semua donatur aktif sudah membayar!</td></tr>`;
+
+  document.getElementById('footBelum').innerHTML = belum.length
+    ? `<tr><td colspan="4" style="padding:10px 14px">TOTAL TUNGGAKAN</td>
+       <td class="rupiah" style="padding:10px 14px;color:var(--danger)">${rupiah(totalBelum)}</td><td colspan="2"></td></tr>` : '';
+
+  // ── TABEL DONATUR BARU (status 'baru' — global, bukan per periode) ──
+  document.getElementById('cntDonaturBaru').textContent = donaturBaru.length;
+  document.getElementById('tblDonaturBaru').innerHTML = donaturBaru.length ? donaturBaru.map(d => {
+    const jmlBayar = DB.get('pembayaran_rutin').filter(p => p.donatur_id === d.id).length;
+    return `<tr>
+      <td style="font-weight:600">${d.nama}</td>
+      <td class="td-mono">${d.hp||'-'}</td>
+      <td class="rupiah" style="font-weight:600;color:var(--success)">${rupiah(d.nominal)}</td>
+      <td style="font-size:12px">${d.metode||'-'}</td>
+      <td style="font-size:12px">${tgl(d.tgl_mulai)}</td>
+      <td style="text-align:center">
+        <span class="badge ${jmlBayar>=1?'b-green':'b-gray'}">${jmlBayar}x bayar</span>
+        ${jmlBayar===0?'<span style="font-size:11px;color:var(--danger)"> ⚠ belum bayar</span>':''}
       </td>
-    </tr>`).join('') : `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--success)">🎉 Semua donatur sudah membayar!</td></tr>`;
+      <td style="font-size:12px">${d.petugas||'-'}</td>
+      <td style="font-size:12px">${d.program||'-'}</td>
+    </tr>`;
+  }).join('')
+  : `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--gray-400)">Tidak ada donatur baru yang menunggu aktif</td></tr>`;
 
-  document.getElementById('footBelum').innerHTML = belum.length ? `
-    <tr><td colspan="4" style="padding:10px 14px">TOTAL TUNGGAKAN</td>
-      <td class="rupiah" style="padding:10px 14px;color:var(--danger)">${rupiah(totalBelum)}</td><td colspan="2"></td></tr>` : '';
-
-  // Rekap bulanan
-  renderRekap(tahun, program);
+  renderRekap(tahun, prog);
 };
 
-function renderRekap(tahun, program) {
-  const donaturAktif = DB.get('donatur_rutin').filter(d =>
-    d.status === 'aktif' && (!program || d.program === program)
-  );
-  const targetPerBulan = donaturAktif.reduce((s,d) => s+(+d.nominal||0), 0);
+function renderRekap(tahun, prog) {
+  const aktif  = DB.get('donatur_rutin').filter(d => d.status === 'aktif' && (!prog || d.program === prog));
+  const target = aktif.reduce((s,d) => s+(+d.nominal||0), 0);
   const bayarAll = DB.get('pembayaran_rutin');
 
   document.getElementById('tblRekap').innerHTML = BULAN_NAMA.map((nama, idx) => {
-    const mb = String(idx+1).padStart(2,'0');
-    const periode = `${tahun}-${mb}`;
-    const bayarBulan = bayarAll.filter(p => p.tgl_bayar?.startsWith(periode));
-    const sudahIds = new Set(bayarBulan.map(p => p.donatur_id));
-    const sudahCount = donaturAktif.filter(d => sudahIds.has(d.id)).length;
-    const belumCount = donaturAktif.length - sudahCount;
-    const total = bayarBulan.reduce((s,p) => s+(+p.nominal||0), 0);
-    const pct = targetPerBulan ? Math.round((total/targetPerBulan)*100) : 0;
-    const isNow = new Date().getMonth() === idx && String(new Date().getFullYear()) === tahun;
+    const mb  = String(idx+1).padStart(2,'0');
+    const prd = `${tahun}-${mb}`;
+    const bayarBulan = bayarAll.filter(p => p.tgl_bayar?.startsWith(prd));
+    const sudahIds   = new Set(bayarBulan.map(p => p.donatur_id));
+    const sudahCount = aktif.filter(d => sudahIds.has(d.id)).length;
+    const belumCount = aktif.length - sudahCount;
+    const total = bayarBulan
+      .filter(p => aktif.find(a => a.id === p.donatur_id))
+      .reduce((s,p) => s+(+p.nominal||0), 0);
+    const pct   = target ? Math.round((total/target)*100) : 0;
+    const isNow = new Date().getMonth()===idx && String(new Date().getFullYear())===tahun;
 
     return `<tr style="${isNow?'background:#f0fdf4;font-weight:600':''}">
       <td>${nama} ${tahun}${isNow?' 🔵':''}</td>
       <td style="color:var(--success);font-weight:600">${sudahCount} donatur</td>
       <td style="color:${belumCount?'var(--danger)':'var(--gray-400)'}">${belumCount} donatur</td>
       <td class="rupiah" style="font-weight:700">${total ? rupiah(total) : '<span style="color:var(--gray-300)">—</span>'}</td>
-      <td class="rupiah" style="color:var(--gray-500)">${rupiah(targetPerBulan)}</td>
+      <td class="rupiah" style="color:var(--gray-500)">${rupiah(target)}</td>
       <td>
         <div style="display:flex;align-items:center;gap:8px">
           <div style="flex:1;height:6px;background:var(--gray-100);border-radius:3px;overflow:hidden">
@@ -197,20 +162,20 @@ function renderRekap(tahun, program) {
 }
 
 window.exportCSVDonatur = function() {
-  const bulan = document.getElementById('flBulan').value;
-  const tahun = document.getElementById('flTahun').value;
+  const bulan   = document.getElementById('flBulan').value;
+  const tahun   = document.getElementById('flTahun').value;
   const periode = `${tahun}-${bulan}`;
-  const donaturAktif = DB.get('donatur_rutin').filter(d => d.status === 'aktif');
-  const bayarBulanIni = DB.get('pembayaran_rutin').filter(p => p.tgl_bayar?.startsWith(periode));
-  const sudahIds = new Set(bayarBulanIni.map(p => p.donatur_id));
+  const aktif   = DB.get('donatur_rutin').filter(d => d.status === 'aktif');
+  const bayar   = DB.get('pembayaran_rutin').filter(p => p.tgl_bayar?.startsWith(periode));
+  const sudahIds = new Set(bayar.map(p => p.donatur_id));
 
-  const rows = donaturAktif.map(d => ({
-    nama: d.nama, hp: d.hp, alamat: d.alamat||'', kota: d.kota||'',
+  const rows = aktif.map(d => ({
+    nama: d.nama, hp: d.hp||'', alamat: d.alamat||'', kota: d.kota||'',
     program: d.program||'', nominal_rutin: d.nominal,
     status_bulan_ini: sudahIds.has(d.id) ? 'Sudah Bayar' : 'Belum Bayar',
-    tgl_bayar: bayarBulanIni.find(p=>p.donatur_id===d.id)?.tgl_bayar||'',
-    nominal_bayar: bayarBulanIni.filter(p=>p.donatur_id===d.id).reduce((s,p)=>s+(+p.nominal||0),0)||'',
+    tgl_bayar: bayar.find(p=>p.donatur_id===d.id)?.tgl_bayar||'',
+    nominal_bayar: bayar.filter(p=>p.donatur_id===d.id).reduce((s,p)=>s+(+p.nominal||0),0)||'',
     petugas: d.petugas||''
   }));
-  exportExcel(rows, `LaporanDonatur_${BULAN_NAMA[+bulan-1]}_${tahun}`, 'Donatur Rutin');
+  exportExcel(rows, `LaporanDonatur_${BULAN_NAMA[+bulan-1]}_${tahun}`, 'Donatur Aktif');
 };

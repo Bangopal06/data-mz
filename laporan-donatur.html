@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
@@ -23,38 +23,38 @@
     <div class="sidebar-brand"><div class="brand-icon"><img src="gambar/logo.png" alt="Logo"></div><h2>Mitra Zakat Al-Iman</h2><p>Panel Admin</p></div>
                 <nav class="sidebar-nav">
       <div class="nav-label">Menu Utama</div>
-      <a href="index.html" class="nav-item"><span class="icon">🏠</span> Dashboard</a>
+      <a href="index.html" class="nav-item"><span class="icon">??</span> Dashboard</a>
       <div class="nav-label">Donatur Rutin</div>
-      <a href="donatur-rutin.html" class="nav-item "><span class="icon">💚</span> Donatur Rutin</a>
+      <a href="donatur-rutin.html" class="nav-item "><span class="icon">??</span> Donatur Rutin</a>
       <div class="nav-label">Kotak Infaq</div>
-      <a href="kotak-infaq.html" class="nav-item "><span class="icon">🗃️</span> Kotak Infaq</a>
-      <a href="kcs.html" class="nav-item "><span class="icon">📦</span> S3 & SCS</a>
+      <a href="kotak-infaq.html" class="nav-item "><span class="icon">???</span> Kotak Infaq</a>
+      <a href="kcs.html" class="nav-item "><span class="icon">??</span> S3 & SCS</a>
       <div class="nav-label">Isidental</div>
-      <a href="waqaf.html" class="nav-item "><span class="icon">🕌</span> Isidental</a>
+      <a href="waqaf.html" class="nav-item "><span class="icon">??</span> Isidental</a>
       <div class="nav-label">Laporan</div>
-      <a href="laporan-donatur.html" class="nav-item active"><span class="icon">💚</span> Lap. Donatur Rutin</a>
-      <a href="laporan-kotak.html" class="nav-item "><span class="icon">🗃️</span> Lap. Kotak Infaq</a>
-      <a href="laporan-kcs.html" class="nav-item CS"><span class="icon">📦</span> Lap. S3 & SCS</a>
-      <a href="laporan-waqaf.html" class="nav-item"><span class="icon">🕌</span> Lap. Isidental</a>
+      <a href="laporan-donatur.html" class="nav-item active"><span class="icon">??</span> Lap. Donatur Rutin</a>
+      <a href="laporan-kotak.html" class="nav-item "><span class="icon">???</span> Lap. Kotak Infaq</a>
+      <a href="laporan-kcs.html" class="nav-item CS"><span class="icon">??</span> Lap. S3 & SCS</a>
+      <a href="laporan-waqaf.html" class="nav-item"><span class="icon">??</span> Lap. Isidental</a>
       <a href="laporan-petugas.html" class="nav-item"><span class="icon">&#128119;</span> Lap. Petugas</a>
       <div class="nav-label">Pengaturan</div>
-      <a href="petugas.html" class="nav-item"><span class="icon">👷</span> Petugas</a>
-      <a href="siswa.html" class="nav-item"><span class="icon">🎒</span> Data Siswa</a>
-      <a href="direktori.html" class="nav-item"><span class="icon">📂</span> Direktori Data</a>
+      <a href="petugas.html" class="nav-item"><span class="icon">??</span> Petugas</a>
+      <a href="siswa.html" class="nav-item"><span class="icon">??</span> Data Siswa</a>
+      <a href="direktori.html" class="nav-item"><span class="icon">??</span> Direktori Data</a>
       <div class="nav-label">Import/Export</div>
-      <a href="import.html" class="nav-item "><span class="icon">📥</span> Import Data</a>
+      <a href="import.html" class="nav-item "><span class="icon">??</span> Import Data</a>
     </nav>
     <div class="sidebar-footer"><div class="avatar">A</div><div class="user-info"><div class="user-name">Administrator</div><div class="user-role">Super Admin</div></div></div>
   </aside>
 
   <div class="main">
     <header class="header">
-      <button class="header-menu" id="menuBtn">☰</button>
-      <div class="header-title">💚 Laporan Donatur Rutin</div>
+      <button class="header-menu" id="menuBtn">?</button>
+      <div class="header-title">?? Laporan Donatur Rutin</div>
       <div class="header-right">
         <span class="header-date" id="headerDate"></span>
-        <button class="btn btn-outline btn-sm no-print" onclick="exportCSVDonatur()">⬇️ Export Excel</button>
-        <button class="btn btn-primary btn-sm no-print" onclick="window.print()">🖨️ Print</button>
+        <button class="btn btn-outline btn-sm no-print" onclick="exportCSVDonatur()">?? Export Excel</button>
+        <button class="btn btn-primary btn-sm no-print" onclick="window.print()">??? Print</button>
       </div>
     </header>
 
@@ -64,7 +64,7 @@
       <div class="period-bar no-print">
         <div class="fg">
           <label class="flabel">Bulan</label>
-          <select id="flBulan" class="fctrl" onchange="renderDonatur()">
+          <select id="flBulan" class="fctrl" onchange="renderLaporan()">
             <option value="01">Januari</option><option value="02">Februari</option>
             <option value="03">Maret</option><option value="04">April</option>
             <option value="05">Mei</option><option value="06">Juni</option>
@@ -75,11 +75,11 @@
         </div>
         <div class="fg">
           <label class="flabel">Tahun</label>
-          <select id="flTahun" class="fctrl" onchange="renderDonatur()"></select>
+          <select id="flTahun" class="fctrl" onchange="renderLaporan()"></select>
         </div>
         <div class="fg">
           <label class="flabel">Program</label>
-          <select id="flProgram" class="fctrl" onchange="renderDonatur()">
+          <select id="flProgram" class="fctrl" onchange="renderLaporan()">
             <option value="">Semua Program</option>
           </select>
         </div>
@@ -88,36 +88,9 @@
       <!-- STAT CARDS -->
       <div class="stats" id="statsDonatur" style="margin-bottom:20px"></div>
 
-      <!-- DONATUR BARU BULAN INI -->
-      <div style="margin-bottom:24px">
-        <div class="section-title"><div class="status-dot" style="background:#8b5cf6"></div>🆕 Donatur Baru Bulan Ini <span id="cntDonaturBaru" class="badge b-purple" style="margin-left:4px">0</span></div>
-        <div class="card">
-          <div class="tbl-wrap">
-            <table>
-              <thead><tr><th>Nama</th><th>Nominal/Bln</th><th>Metode</th><th>Tgl Mulai</th><th>Petugas Pengembang</th><th>Program</th></tr></thead>
-              <tbody id="tblDonaturBaru"></tbody>
-              <tfoot id="footDonaturBaru"></tfoot>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- DONATUR BARU MENUNGGU AKTIF -->
-      <div style="margin-bottom:24px">
-        <div class="section-title"><div class="status-dot" style="background:#f97316"></div>⏳ Donatur Baru (Menunggu Bayar Ke-2) <span id="cntMenungguAktif" class="badge b-orange" style="margin-left:4px">0</span></div>
-        <div class="card">
-          <div class="tbl-wrap">
-            <table>
-              <thead><tr><th>Nama</th><th>No. HP</th><th>Nominal/Bln</th><th>Metode</th><th>Tgl Mulai</th><th>Sudah Bayar</th><th>Petugas</th></tr></thead>
-              <tbody id="tblMenungguAktif"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
       <!-- SUDAH BAYAR -->
       <div style="margin-bottom:24px">
-        <div class="section-title"><div class="status-dot dot-green"></div>✅ Sudah Membayar Bulan Ini <span id="cntSudah" class="badge b-green" style="margin-left:4px">0</span></div>
+        <div class="section-title"><div class="status-dot dot-green"></div>? Sudah Membayar Bulan Ini <span id="cntSudah" class="badge b-green" style="margin-left:4px">0</span></div>
         <div class="card">
           <div class="tbl-wrap">
             <table>
@@ -131,7 +104,7 @@
 
       <!-- BELUM BAYAR -->
       <div style="margin-bottom:24px">
-        <div class="section-title"><div class="status-dot dot-red"></div>⏳ Belum Membayar Bulan Ini <span id="cntBelum" class="badge b-red" style="margin-left:4px">0</span></div>
+        <div class="section-title"><div class="status-dot dot-red"></div>? Belum Membayar Bulan Ini <span id="cntBelum" class="badge b-red" style="margin-left:4px">0</span></div>
         <div class="card">
           <div class="tbl-wrap">
             <table>
@@ -143,9 +116,22 @@
         </div>
       </div>
 
+      <!-- DONATUR BARU (menunggu bayar ke-2) -->
+      <div style="margin-bottom:24px">
+        <div class="section-title"><div class="status-dot" style="background:#8b5cf6"></div>?? Donatur Baru (Menunggu Bayar Ke-2) <span id="cntDonaturBaru" class="badge b-purple" style="margin-left:4px">0</span></div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Nama</th><th>No. HP</th><th>Nominal/Bln</th><th>Metode</th><th>Tgl Mulai</th><th>Sudah Bayar</th><th>Petugas</th><th>Program</th></tr></thead>
+              <tbody id="tblDonaturBaru"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- REKAP BULANAN -->
       <div>
-        <div class="section-title">📅 Rekap Bulanan Tahun Ini</div>
+        <div class="section-title">?? Rekap Bulanan Tahun Ini</div>
         <div class="card">
           <div class="tbl-wrap">
             <table>
@@ -164,6 +150,6 @@
 <script src="js/supabase.js"></script>
 <script src="js/db.js"></script>
 <script src="js/app.js"></script>
-<script src="js/laporan-donatur.js"></script>
+<script src="js/laporan-donatur.js?v=2"></script>
 </body>
 </html>
