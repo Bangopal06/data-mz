@@ -107,6 +107,30 @@ window.renderDonatur = function() {
     <td class="rupiah" style="padding:10px 14px">${rupiah(totalBaru)}/bulan</td>
     <td colspan="4"></td></tr>` : '';
 
+  // DONATUR BARU MENUNGGU AKTIF (status 'baru' di donatur_rutin)
+  const donaturMenunggu = DB.get('donatur_rutin').filter(d => d.status === 'baru');
+  const tblMenunggu = document.getElementById('tblMenungguAktif');
+  const cntMenunggu = document.getElementById('cntMenungguAktif');
+  if (cntMenunggu) cntMenunggu.textContent = donaturMenunggu.length;
+  if (tblMenunggu) {
+    tblMenunggu.innerHTML = donaturMenunggu.length ? donaturMenunggu.map(d => {
+      const jmlBayar = DB.get('pembayaran_rutin').filter(p=>p.donatur_id===d.id).length;
+      return `<tr>
+        <td style="font-weight:600">${d.nama}</td>
+        <td class="td-mono">${d.hp||'-'}</td>
+        <td class="rupiah" style="color:var(--success);font-weight:600">${rupiah(d.nominal)}</td>
+        <td style="font-size:12px">${d.metode||'-'}</td>
+        <td style="font-size:12px">${tgl(d.tgl_mulai)}</td>
+        <td style="text-align:center">
+          <span class="badge ${jmlBayar>=1?'b-green':'b-gray'}">${jmlBayar}x bayar</span>
+          ${jmlBayar===0?'<span style="font-size:11px;color:var(--danger)"> belum bayar</span>':''}
+        </td>
+        <td style="font-size:12px">${d.petugas||'-'}</td>
+      </tr>`;
+    }).join('')
+    : `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--gray-400)">Tidak ada donatur baru yang menunggu aktif</td></tr>`;
+  }
+
   // Counter badge
   document.getElementById('cntSudah').textContent = sudah.length;
   document.getElementById('cntBelum').textContent = belum.length;

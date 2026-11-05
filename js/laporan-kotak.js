@@ -192,6 +192,28 @@ function renderRekapBulanan(tahun, filterKota, filterPetugas) {
       <td class="rupiah" style="padding:10px 14px">${rupiah(grandTotal)}</td>
       <td class="rupiah" style="padding:10px 14px">${kotakAktif.length ? rupiah(Math.round(grandTotal/(kotakAktif.length*12))) : '—'}/bln</td>
     </tr>`;
+
+  // KOTAK BARU (status 'baru' di kotak_infaq)
+  const kotakBaru = DB.get('kotak_infaq').filter(k => k.status === 'baru');
+  const tblKotakBaru = document.getElementById('tblKotakBaru');
+  const cntKotakBaru = document.getElementById('cntKotakBaru');
+  if (cntKotakBaru) cntKotakBaru.textContent = kotakBaru.length;
+  if (tblKotakBaru) {
+    tblKotakBaru.innerHTML = kotakBaru.length ? kotakBaru.map((k,i) => {
+      const jmlAmbil = DB.get('pengambilan_kotak').filter(a=>a.kotak_id===k.id).length;
+      return `<tr>
+        <td style="text-align:center;color:var(--gray-400)">${i+1}</td>
+        <td style="font-weight:600">${k.nama_toko}</td>
+        <td style="font-size:12px">${k.pemilik||'-'}</td>
+        <td class="td-mono">${k.hp||'-'}</td>
+        <td style="font-size:12px">${k.kota||'-'}</td>
+        <td style="font-size:12px">${k.petugas||'-'}</td>
+        <td style="text-align:center"><span class="badge ${jmlAmbil>=1?'b-green':'b-gray'}">${jmlAmbil}x ambil</span></td>
+      </tr>`;
+    }).join('')
+    : `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--gray-400)">Tidak ada kotak baru saat ini</td></tr>`;
+  }
+};
 }
 
 window.exportCSVKotak = function() {
