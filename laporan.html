@@ -3,35 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Laporan - Admin Mitra Zakat Al-Iman</title>
+  <title>Laporan Keseluruhan - Mitra Zakat Al-Iman</title>
   <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    .lap-section { margin-bottom: 32px; }
-    .lap-section-title {
-      font-size: 15px; font-weight: 700; color: var(--gray-800);
-      margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
-      padding-bottom: 10px; border-bottom: 2px solid var(--gray-100);
-    }
-    .summary-box {
-      background: white; border-radius: 10px; border: 1px solid var(--gray-200);
-      padding: 16px 20px; display: flex; align-items: center; gap: 14px;
-    }
-    .summary-box .sb-icon { font-size: 28px; }
-    .summary-box .sb-label { font-size: 12px; color: var(--gray-500); margin-bottom: 3px; }
-    .summary-box .sb-val { font-size: 20px; font-weight: 800; color: var(--gray-900); }
-    .summary-box .sb-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
-    .filter-bar {
-      background: white; border-radius: 10px; border: 1px solid var(--gray-200);
-      padding: 16px 20px; margin-bottom: 20px;
-      display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;
-    }
-    .filter-bar .fg { min-width: 140px; flex: 1; }
-    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-    .chart-box { background: white; border-radius: 10px; border: 1px solid var(--gray-200); padding: 18px 20px; }
-    .chart-box .ct { font-size: 13px; font-weight: 700; color: var(--gray-700); margin-bottom: 14px; }
-    @media(max-width:768px) { .chart-row { grid-template-columns: 1fr; } }
-    @print { .no-print { display: none; } }
+    .period-bar{background:white;border-radius:10px;border:1px solid var(--gray-200);padding:14px 20px;margin-bottom:20px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+    .period-bar .fg{min-width:130px;flex:1}
+    .section-title{font-size:14px;font-weight:700;color:var(--gray-700);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+    .status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    tfoot tr td{font-weight:700;background:var(--gray-50)}
+    .grand-card{background:linear-gradient(135deg,var(--primary),#6c2bd9);color:white;border-radius:12px;padding:20px 24px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+    .grand-card .gc-lbl{font-size:13px;opacity:.8}
+    .grand-card .gc-val{font-size:28px;font-weight:800}
+    .grand-card .gc-sub{font-size:12px;opacity:.7;margin-top:2px}
+    .sumber-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+    .sumber-card{background:white;border-radius:10px;border:1px solid var(--gray-200);padding:16px;display:flex;align-items:center;gap:12px}
+    .sumber-card .sc-ico{font-size:24px;width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+    .sumber-card .sc-lbl{font-size:12px;color:var(--gray-500)}
+    .sumber-card .sc-val{font-size:17px;font-weight:700}
+    .sumber-card .sc-pct{font-size:11px;color:var(--gray-400);margin-top:2px}
+    @media print{.no-print{display:none}}
   </style>
 </head>
 <body>
@@ -39,7 +29,7 @@
 <div class="layout">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand"><div class="brand-icon"><img src="gambar/logo.png" alt="Logo"></div><h2>Mitra Zakat Al-Iman</h2><p>Panel Admin</p></div>
-                <nav class="sidebar-nav">
+    <nav class="sidebar-nav">
       <div class="nav-label">Menu Utama</div>
       <a href="index.html" class="nav-item"><span class="icon">🏠</span> Dashboard</a>
       <div class="nav-label">Donatur Rutin</div>
@@ -50,6 +40,7 @@
       <div class="nav-label">Isidental</div>
       <a href="waqaf.html" class="nav-item"><span class="icon">🕌</span> Isidental</a>
       <div class="nav-label">Laporan</div>
+      <a href="laporan.html" class="nav-item active"><span class="icon">📈</span> Lap. Keseluruhan</a>
       <a href="laporan-donatur.html" class="nav-item"><span class="icon">💚</span> Lap. Donatur Rutin</a>
       <a href="laporan-kotak.html" class="nav-item"><span class="icon">🗃️</span> Lap. Kotak Infaq</a>
       <a href="laporan-kcs.html" class="nav-item"><span class="icon">📦</span> Lap. S3 & SCS</a>
@@ -68,10 +59,10 @@
   <div class="main">
     <header class="header">
       <button class="header-menu" id="menuBtn">☰</button>
-      <div class="header-title">📈 Laporan Keuangan</div>
+      <div class="header-title">📈 Laporan Keseluruhan</div>
       <div class="header-right">
         <span class="header-date" id="headerDate"></span>
-        <button class="btn btn-outline btn-sm no-print" onclick="exportLaporan()">⬇️ Export CSV</button>
+        <button class="btn btn-outline btn-sm no-print" onclick="exportLapKeseluruhan()">⬇️ Export Excel</button>
         <button class="btn btn-primary btn-sm no-print" onclick="window.print()">🖨️ Print</button>
       </div>
     </header>
@@ -79,14 +70,10 @@
     <div class="page">
 
       <!-- FILTER -->
-      <div class="filter-bar no-print">
+      <div class="period-bar no-print">
         <div class="fg">
-          <label class="flabel">Tahun</label>
-          <select id="flTahun" class="fctrl" onchange="renderAll()"></select>
-        </div>
-        <div class="fg">
-          <label class="flabel">Bulan (opsional)</label>
-          <select id="flBulan" class="fctrl" onchange="renderAll()">
+          <label class="flabel">Bulan</label>
+          <select id="flBulan" class="fctrl" onchange="renderKeseluruhan()">
             <option value="">Semua Bulan</option>
             <option value="01">Januari</option><option value="02">Februari</option>
             <option value="03">Maret</option><option value="04">April</option>
@@ -97,93 +84,102 @@
           </select>
         </div>
         <div class="fg">
-          <label class="flabel">Sumber</label>
-          <select id="flSumber" class="fctrl" onchange="renderAll()">
-            <option value="">Semua</option>
-            <option value="donatur">Donatur Rutin</option>
-            <option value="kotak">Kotak Infaq</option>
-          </select>
+          <label class="flabel">Tahun</label>
+          <select id="flTahun" class="fctrl" onchange="renderKeseluruhan()"></select>
         </div>
       </div>
 
-      <!-- SUMMARY CARDS -->
-      <div class="stats" id="lapStats" style="margin-bottom:24px"></div>
-
-      <!-- GRAFIK -->
-      <div class="chart-row" style="margin-bottom:20px">
-        <div class="chart-box">
-          <div class="ct">📊 Pendapatan Per Bulan (Tahun Berjalan)</div>
-          <div style="height:180px;position:relative">
-            <canvas id="chartBulanan"></canvas>
-          </div>
+      <!-- GRAND TOTAL CARD -->
+      <div class="grand-card">
+        <div>
+          <div class="gc-lbl">Total Pendapatan Periode Ini</div>
+          <div class="gc-val rupiah" id="grandTotal">Rp 0</div>
+          <div class="gc-sub" id="grandSub">memuat...</div>
         </div>
-        <div class="chart-box">
-          <div class="ct">🥧 Komposisi Sumber Dana</div>
-          <div style="height:180px;position:relative">
-            <canvas id="chartKomposisi"></canvas>
-          </div>
+        <div style="text-align:right">
+          <div class="gc-lbl">Total Transaksi</div>
+          <div style="font-size:22px;font-weight:700" id="grandTrx">0</div>
         </div>
       </div>
 
-      <!-- LAPORAN DONATUR RUTIN -->
-      <div class="lap-section" id="secDonatur">
-        <div class="lap-section-title">💚 Laporan Donatur Rutin</div>
-        <div class="card">
-          <div class="card-head">
-            <div class="card-title">Rincian Pembayaran Donatur Rutin</div>
-            <span id="lapDonaturTotal" class="text-muted text-sm"></span>
-          </div>
-          <div class="tbl-wrap">
-            <table id="tblLapDonatur">
-              <thead><tr><th>Nama Donatur</th><th>Program</th><th>Nominal/Bln</th><th>Tgl Bayar</th><th>Nominal Bayar</th><th>Petugas</th><th>Catatan</th></tr></thead>
-              <tbody id="bodyLapDonatur"></tbody>
-              <tfoot id="footLapDonatur"></tfoot>
-            </table>
-          </div>
-        </div>
+      <!-- KARTU PER SUMBER -->
+      <div class="sumber-grid" id="sumberGrid"></div>
+
+      <!-- TAB BAR -->
+      <div class="tabs-bar no-print">
+        <button class="tab-btn active" onclick="switchTabAll('semua')" id="allTabSemua">📋 Semua</button>
+        <button class="tab-btn" onclick="switchTabAll('rekap')" id="allTabRekap">📅 Rekap Bulanan</button>
+        <button class="tab-btn" onclick="switchTabAll('donatur')" id="allTabDonatur">💚 Donatur Rutin</button>
+        <button class="tab-btn" onclick="switchTabAll('kotak')" id="allTabKotak">🗃️ Kotak Infaq</button>
+        <button class="tab-btn" onclick="switchTabAll('scs')" id="allTabScs">📦 S3 & SCS</button>
+        <button class="tab-btn" onclick="switchTabAll('isidental')" id="allTabIsidental">🕌 Isidental</button>
       </div>
 
-      <!-- LAPORAN KOTAK INFAQ -->
-      <div class="lap-section" id="secKotak">
-        <div class="lap-section-title">🗃️ Laporan Kotak Infaq</div>
-
-        <!-- Per Toko -->
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-head">
-            <div class="card-title">Pendapatan Per Toko/Lokasi</div>
-            <span id="lapKotakTotal" class="text-muted text-sm"></span>
-          </div>
-          <div class="tbl-wrap">
-            <table id="tblLapKotak">
-              <thead><tr><th>Nama Kotak</th><th>Nama Toko</th><th>Kota</th><th>Frekuensi</th><th>Jml Ambil</th><th>Total Terkumpul</th><th>Rata-rata/Ambil</th></tr></thead>
-              <tbody id="bodyLapKotak"></tbody>
-              <tfoot id="footLapKotak"></tfoot>
-            </table>
-          </div>
-        </div>
-
-        <!-- Rincian Pengambilan -->
-        <div class="card">
-          <div class="card-head"><div class="card-title">Rincian Pengambilan Kotak</div></div>
-          <div class="tbl-wrap">
-            <table id="tblLapAmbil">
-              <thead><tr><th>Nama Kotak</th><th>Toko</th><th>Tgl Ambil</th><th>Nominal</th><th>Petugas</th><th>Catatan</th></tr></thead>
-              <tbody id="bodyLapAmbil"></tbody>
-              <tfoot id="footLapAmbil"></tfoot>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- REKAPITULASI BULANAN -->
-      <div class="lap-section">
-        <div class="lap-section-title">📅 Rekapitulasi Bulanan</div>
+      <!-- REKAP BULANAN -->
+      <div id="allPaneRekap" style="margin-bottom:24px">
+        <div class="section-title"><div class="status-dot" style="background:var(--primary)"></div>📅 Rekap Bulanan — Semua Sumber</div>
         <div class="card">
           <div class="tbl-wrap">
-            <table id="tblRekap">
-              <thead><tr><th>Bulan</th><th>Donatur Rutin</th><th>Kotak Infaq</th><th>Total</th><th>Kumulatif</th></tr></thead>
-              <tbody id="bodyRekap"></tbody>
+            <table>
+              <thead><tr><th>Bulan</th><th>Donatur Rutin</th><th>Kotak Infaq</th><th>S3 & SCS</th><th>Isidental</th><th>Total</th><th>Kumulatif</th></tr></thead>
+              <tbody id="tblRekap"></tbody>
               <tfoot id="footRekap"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- DONATUR RUTIN -->
+      <div id="allPaneDonatur" style="margin-bottom:24px">
+        <div class="section-title"><div class="status-dot" style="background:var(--success)"></div>💚 Pembayaran Donatur Rutin</div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Nama Donatur</th><th>Program</th><th>Nominal/Bln</th><th>Tgl Bayar</th><th>Nominal Bayar</th><th>Metode</th><th>Petugas</th></tr></thead>
+              <tbody id="tblDonatur"></tbody>
+              <tfoot id="footDonatur"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- KOTAK INFAQ -->
+      <div id="allPaneKotak" style="margin-bottom:24px">
+        <div class="section-title"><div class="status-dot" style="background:#f97316"></div>🗃️ Pengambilan Kotak Infaq</div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Nama Kotak</th><th>Nama Toko</th><th>Kota</th><th>Tgl Ambil</th><th>Nominal</th><th>Petugas</th></tr></thead>
+              <tbody id="tblKotak"></tbody>
+              <tfoot id="footKotak"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- S3 & SCS -->
+      <div id="allPaneScs" style="margin-bottom:24px">
+        <div class="section-title"><div class="status-dot" style="background:var(--primary)"></div>📦 Sedekah S3 & SCS</div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Nama</th><th>Jenis</th><th>Kelas/Amanah</th><th>Tgl Bayar</th><th>Nominal</th><th>Petugas</th></tr></thead>
+              <tbody id="tblScs"></tbody>
+              <tfoot id="footScs"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ISIDENTAL -->
+      <div id="allPaneIsidental" style="margin-bottom:24px">
+        <div class="section-title"><div class="status-dot" style="background:#8b5cf6"></div>🕌 Donasi Isidental</div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Nama Donatur</th><th>Program</th><th>Tgl Donasi</th><th>Nominal</th><th>Metode</th><th>Petugas</th></tr></thead>
+              <tbody id="tblIsidental"></tbody>
+              <tfoot id="footIsidental"></tfoot>
             </table>
           </div>
         </div>
@@ -193,6 +189,7 @@
   </div>
 </div>
 <div id="toast-wrap"></div>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase.js"></script>
 <script src="js/db.js"></script>
