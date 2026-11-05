@@ -42,7 +42,7 @@ function loadKiStats() {
   const totalAll = pa.reduce((s,a)=>s+(+a.nominal||0),0);
   document.getElementById('kiStats').innerHTML = `
     <div class="stat"><div class="stat-ico ic-orange">🗃️</div><div class="stat-body"><div class="lbl">Kotak Aktif</div><div class="val">${ki.filter(k=>k.status==='aktif').length}</div><div class="sub">${ki.length} total kotak</div></div></div>
-    <div class="stat"><div class="stat-ico ic-blue">👤</div><div class="stat-body"><div class="lbl">Kotak Baru</div><div class="val">${pk.length}</div><div class="sub">Belum diambil pertama</div></div></div>
+    <div class="stat"><div class="stat-ico ic-blue">🆕</div><div class="stat-body"><div class="lbl">Kotak Baru</div><div class="val">${jmlBaru}</div><div class="sub">Belum diambil pertama</div></div></div>
     <div class="stat"><div class="stat-ico ic-green">💰</div><div class="stat-body"><div class="lbl">Infaq Terakhir</div><div class="val rupiah" style="font-size:15px">${rupiah(totalInfaq)}</div></div></div>
     <div class="stat"><div class="stat-ico ic-teal">📊</div><div class="stat-body"><div class="lbl">Total Terkumpul</div><div class="val rupiah" style="font-size:15px">${rupiah(totalAll)}</div></div></div>
   `;
@@ -50,7 +50,7 @@ function loadKiStats() {
 
 // ============ DATA KOTAK ============
 function loadKotak() {
-  let data = DB.get('kotak_infaq');
+  let data = DB.get('kotak_infaq').filter(k => k.status !== 'baru'); // Data Kotak tidak include status baru
   const sr = document.getElementById('srKotak').value.toLowerCase();
   const kota = document.getElementById('srKotaKota').value.toLowerCase();
   const st = document.getElementById('flKotakStatus').value;
@@ -60,7 +60,7 @@ function loadKotak() {
   if (st) data = data.filter(k => k.status === st);
   if (fr) data = data.filter(k => k.frekuensi === fr);
 
-  document.getElementById('cntKotak').textContent = data.length;
+  document.getElementById('cntKotak').textContent = DB.get('kotak_infaq').filter(k=>k.status!=='baru').length;
   const { items, total } = paginate(data, pgKotak, PS);
 
   document.getElementById('kotakGrid').innerHTML = items.length ? items.map(k => `
