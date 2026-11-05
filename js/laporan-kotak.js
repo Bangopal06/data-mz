@@ -77,6 +77,9 @@ window.renderKotak = function() {
 
   document.getElementById('cntSudahAmbil').textContent = sudah.length;
   document.getElementById('cntBelumAmbil').textContent = belum.length;
+  // Update tab counter
+  const cntKtS = document.getElementById('cntKtSudah'); if(cntKtS) cntKtS.textContent = sudah.length;
+  const cntKtB = document.getElementById('cntKtBelum'); if(cntKtB) cntKtB.textContent = belum.length;
 
   // TABEL SUDAH DIAMBIL
   const ambilSorted = [...ambilBulanIni].sort((a,b) => new Date(b.tgl_ambil)-new Date(a.tgl_ambil));
@@ -198,6 +201,7 @@ function renderRekapBulanan(tahun, filterKota, filterPetugas) {
   const tblKotakBaru = document.getElementById('tblKotakBaru');
   const cntKotakBaru = document.getElementById('cntKotakBaru');
   if (cntKotakBaru) cntKotakBaru.textContent = kotakBaru.length;
+  const cntKtBr = document.getElementById('cntKtBaru'); if(cntKtBr) cntKtBr.textContent = kotakBaru.length;
   if (tblKotakBaru) {
     tblKotakBaru.innerHTML = kotakBaru.length ? kotakBaru.map((k,i) => {
       const jmlAmbil = DB.get('pengambilan_kotak').filter(a=>a.kotak_id===k.id).length;
@@ -233,3 +237,16 @@ window.exportCSVKotak = function() {
   }));
   exportExcel(rows, `LaporanKotak_${BULAN_NAMA[+bulan-1]}_${tahun}`, 'Kotak Infaq');
 };
+
+window.switchTabKotak = function(tab) {
+  const map = { semua:['ktPaneSudah','ktPaneBelum','ktPaneRekapToko','ktPaneBaru','ktPaneRekap'], sudah:['ktPaneSudah'], belum:['ktPaneBelum'], rekaptoko:['ktPaneRekapToko'], baru:['ktPaneBaru'], rekap:['ktPaneRekap'] };
+  const all = ['ktPaneSudah','ktPaneBelum','ktPaneRekapToko','ktPaneBaru','ktPaneRekap'];
+  const tabs = ['ktTabSemua','ktTabSudah','ktTabBelum','ktTabRekapToko','ktTabBaru','ktTabRekap'];
+  all.forEach(p=>{const e=document.getElementById(p);if(e)e.style.display='none';});
+  tabs.forEach(t=>{const e=document.getElementById(t);if(e)e.classList.remove('active');});
+  (map[tab]||all).forEach(p=>{const e=document.getElementById(p);if(e)e.style.display='';});
+  const tid='ktTab'+tab.charAt(0).toUpperCase()+tab.slice(1);
+  const te=document.getElementById(tid);if(te)te.classList.add('active');
+};
+
+document.addEventListener('DOMContentLoaded',()=>{ setTimeout(()=>switchTabKotak('semua'),50); });

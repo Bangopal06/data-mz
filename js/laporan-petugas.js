@@ -328,3 +328,20 @@ window.exportLaporanPetugas = function() {
   if (!rows.length) { toast('Tidak ada data','warn'); return; }
   exportExcel(rows, `LaporanPetugas_${periode}`, 'Petugas');
 };
+
+window.switchTabPetugas = function(tab) {
+  const map = {
+    semua: ['ptPaneMetode','ptPaneRekap','ptPaneDetail','ptPaneProspek','ptPaneDetailProspek'],
+    metode: ['ptPaneMetode'], rekap: ['ptPaneRekap'], detail: ['ptPaneDetail'],
+    prospek: ['ptPaneProspek','ptPaneDetailProspek']
+  };
+  const all = ['ptPaneMetode','ptPaneRekap','ptPaneDetail','ptPaneProspek','ptPaneDetailProspek'];
+  const tabs = ['ptTabSemua','ptTabMetode','ptTabRekap','ptTabDetail','ptTabProspek'];
+  all.forEach(p=>{const e=document.getElementById(p);if(e)e.style.display='none';});
+  tabs.forEach(t=>{const e=document.getElementById(t);if(e)e.classList.remove('active');});
+  (map[tab]||all).forEach(p=>{const e=document.getElementById(p);if(e)e.style.display='';});
+  const tid='ptTab'+tab.charAt(0).toUpperCase()+tab.slice(1);
+  const te=document.getElementById(tid);if(te)te.classList.add('active');
+};
+
+document.addEventListener('DOMContentLoaded',()=>{ setTimeout(()=>switchTabPetugas('semua'),50); });

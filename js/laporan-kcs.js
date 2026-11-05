@@ -103,6 +103,7 @@ window.renderLapKCS = function() {
 
   // RIWAYAT SEDEKAH
   document.getElementById('lkCntBayar').textContent = bayar.length;
+  const scsCnt = document.getElementById('scsCntRiwayat'); if(scsCnt) scsCnt.textContent = bayar.length;
   document.getElementById('lkTblBayar').innerHTML = bayar.length ? bayar.map(b=>`<tr>
     <td style="font-weight:600">${b.nama_santri||'-'}</td>
     <td><span class="badge b-blue" style="font-size:11px">${b.kelas||'-'}</span></td>
@@ -195,3 +196,16 @@ window.exportLapSCS = function() {
 
 // backward compat alias
 window.exportLapKCS = window.exportLapSCS;
+
+window.switchTabSCS = function(tab) {
+  const map = { semua:['scsPaneKelas','scsPaneHalaqoh','scsPaneRiwayat','scsPaneS3','scsPaneRekap'], kelas:['scsPaneKelas'], halaqoh:['scsPaneHalaqoh'], riwayat:['scsPaneRiwayat'], s3:['scsPaneS3'], rekap:['scsPaneRekap'] };
+  const all = ['scsPaneKelas','scsPaneHalaqoh','scsPaneRiwayat','scsPaneS3','scsPaneRekap'];
+  const tabs = ['scsTabSemua','scsTabKelas','scsTabHalaqoh','scsTabRiwayat','scsTabS3','scsTabRekap'];
+  all.forEach(p=>{const e=document.getElementById(p);if(e)e.style.display='none';});
+  tabs.forEach(t=>{const e=document.getElementById(t);if(e)e.classList.remove('active');});
+  (map[tab]||all).forEach(p=>{const e=document.getElementById(p);if(e)e.style.display='';});
+  const tid='scsTab'+tab.charAt(0).toUpperCase()+tab.slice(1);
+  const te=document.getElementById(tid);if(te)te.classList.add('active');
+};
+
+document.addEventListener('DOMContentLoaded',()=>{ setTimeout(()=>switchTabSCS('semua'),50); });

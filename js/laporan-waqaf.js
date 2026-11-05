@@ -111,6 +111,7 @@ function renderRekapProgram(wp, donasi) {
 function renderDonasi(wp, donasi) {
   const sorted = [...donasi].sort((a,b)=>new Date(b.tgl_donasi)-new Date(a.tgl_donasi));
   document.getElementById('cntDonasi').textContent = sorted.length;
+  const wqCnt = document.getElementById('wqCntDonasi'); if(wqCnt) wqCnt.textContent = sorted.length;
   const total = sorted.filter(d=>d.status==='lunas').reduce((s,d)=>s+(+d.nominal||0),0);
 
   document.getElementById('tblDonasi').innerHTML = sorted.length ? sorted.map(d => {
@@ -207,3 +208,16 @@ window.exportLaporanWaqaf = function() {
   }));
   exportExcel(data, `LaporanWaqaf_${tahun}`, 'Waqaf');
 };
+
+window.switchTabWaqaf = function(tab) {
+  const map = { semua:['wqPaneProgram','wqPaneDonasi','wqPaneRekap','wqPaneTop'], program:['wqPaneProgram'], donasi:['wqPaneDonasi'], rekap:['wqPaneRekap'], top:['wqPaneTop'] };
+  const all = ['wqPaneProgram','wqPaneDonasi','wqPaneRekap','wqPaneTop'];
+  const tabs = ['wqTabSemua','wqTabProgram','wqTabDonasi','wqTabRekap','wqTabTop'];
+  all.forEach(p=>{const e=document.getElementById(p);if(e)e.style.display='none';});
+  tabs.forEach(t=>{const e=document.getElementById(t);if(e)e.classList.remove('active');});
+  (map[tab]||all).forEach(p=>{const e=document.getElementById(p);if(e)e.style.display='';});
+  const tid='wqTab'+tab.charAt(0).toUpperCase()+tab.slice(1);
+  const te=document.getElementById(tid);if(te)te.classList.add('active');
+};
+
+document.addEventListener('DOMContentLoaded',()=>{ setTimeout(()=>switchTabWaqaf('semua'),50); });

@@ -394,3 +394,10 @@ tbody tr{transition:background .1s}
 
 /* Stat number animation */
 .stat .val{transition:all .2s}
+
+/* ── TAB BAR LAPORAN ── */
+.tabs-bar{display:flex;gap:6px;flex-wrap:wrap;background:white;border-radius:10px;border:1px solid var(--gray-200);padding:8px 12px;margin-bottom:16px}
+.tab-btn{padding:7px 14px;border:none;background:transparent;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;color:var(--gray-500);display:flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap}
+.tab-btn:hover{background:var(--gray-100)}
+.tab-btn.active{background:var(--primary);color:white}
+.tab-btn.active .badge{background:rgba(255,255,255,0.25);color:white}
