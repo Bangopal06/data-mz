@@ -214,7 +214,6 @@ function renderRekapBulanan(tahun, filterKota, filterPetugas) {
     : `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--gray-400)">Tidak ada kotak baru saat ini</td></tr>`;
   }
 };
-}
 
 window.exportCSVKotak = function() {
   const bulan = document.getElementById('flBulan').value;
