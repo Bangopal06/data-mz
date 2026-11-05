@@ -27,24 +27,25 @@ window.renderLaporan = function() {
   const prog    = document.getElementById('flProgram').value;
   const periode = `${tahun}-${bulan}`;
 
-  // Donatur aktif = sudah resmi, bukan yang masih status baru
-  const aktif = DB.get('donatur_rutin').filter(d =>
-    d.status === 'aktif' && (!prog || d.program === prog)
+  // Semua donatur aktif dan baru (untuk keperluan laporan bayar)
+  const semuaDonatur = DB.get('donatur_rutin').filter(d =>
+    (d.status === 'aktif' || d.status === 'baru') && (!prog || d.program === prog)
   );
-
-  // Donatur baru = masih menunggu bayar ke-2, ditampilkan terpisah
+  const aktif      = semuaDonatur.filter(d => d.status === 'aktif');
   const donaturBaru = DB.get('donatur_rutin').filter(d => d.status === 'baru');
 
   const bayarPeriode = DB.get('pembayaran_rutin').filter(p =>
     p.tgl_bayar && p.tgl_bayar.startsWith(periode)
   );
 
-  const sudahIds   = new Set(bayarPeriode.map(p => p.donatur_id));
-  const sudah      = aktif.filter(d =>  sudahIds.has(d.id));
-  const belum      = aktif.filter(d => !sudahIds.has(d.id));
+  const sudahIds = new Set(bayarPeriode.map(p => p.donatur_id));
+  // Sudah bayar = aktif + baru yang ada bayarannya bulan ini
+  const sudah    = semuaDonatur.filter(d => sudahIds.has(d.id));
+  // Belum bayar = hanya donatur aktif yang belum bayar (baru punya section sendiri)
+  const belum    = aktif.filter(d => !sudahIds.has(d.id));
 
   const totalSudah    = bayarPeriode
-    .filter(p => aktif.find(a => a.id === p.donatur_id))
+    .filter(p => semuaDonatur.find(a => a.id === p.donatur_id))
     .reduce((s,p) => s+(+p.nominal||0), 0);
   const targetBulanan = aktif.reduce((s,d) => s+(+d.nominal||0), 0);
   const totalBelum    = belum.reduce((s,d) => s+(+d.nominal||0), 0);
@@ -66,11 +67,12 @@ window.renderLaporan = function() {
       <div class="val rupiah" style="font-size:14px">${rupiah(totalSudah)}</div>
       <div class="sub">${pct}% dari ${rupiah(targetBulanan)}</div></div></div>`;
 
-  // ── TABEL SUDAH BAYAR (donatur aktif saja) ──
+  // ── TABEL SUDAH BAYAR (aktif + baru yang sudah bayar bulan ini) ──
   document.getElementById('tblSudahBayar').innerHTML = sudah.length ? sudah.map(d => {
     const bayar = bayarPeriode.filter(p => p.donatur_id === d.id);
+    const labelBaru = d.status === 'baru' ? ' <span class="badge b-purple" style="font-size:10px;vertical-align:middle">Baru</span>' : '';
     return bayar.map((p,i) => `<tr>
-      ${i===0 ? `<td class="td-name" rowspan="${bayar.length}">${d.nama}</td>
+      ${i===0 ? `<td class="td-name" rowspan="${bayar.length}">${d.nama}${labelBaru}</td>
         <td class="td-mono" rowspan="${bayar.length}">${d.hp||'-'}</td>
         <td style="font-size:12px" rowspan="${bayar.length}">${d.program||'-'}</td>
         <td class="rupiah" style="font-size:12px" rowspan="${bayar.length}">${rupiah(d.nominal)}</td>` : ''}
