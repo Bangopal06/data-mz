@@ -6,12 +6,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     DB.sync('pembayaran_rutin'),
     DB.sync('donatur_rutin'),
     DB.sync('pengambilan_kotak'),
+    DB.sync('kotak_infaq'),
     DB.sync('scs_pembayaran'),
     DB.sync('s3_pembayaran'),
     DB.sync('donatur_waqaf'),
-    DB.sync('waqaf_program'),
-    DB.sync('prospek_kotak'),
-    DB.sync('prospek_rutin')
+    DB.sync('waqaf_program')
   ]);
   initFilter();
   renderPetugas();
@@ -187,49 +186,51 @@ window.renderPetugas = function() {
       <td colspan="2"></td>
     </tr>` : '';
 
-  // PROSPEK PER PETUGAS
-  const allProspekKotak = DB.get('prospek_kotak');
-  const allProspekSCS = [];  // SCS tidak pakai prospek
-  const allProspekRutin = DB.get('prospek_rutin');
+  // PENGEMBANGAN — donatur baru (status 'baru' di donatur_rutin) + kotak baru (status 'baru' di kotak_infaq)
+  const donaturBaru = DB.get('donatur_rutin')
+    .filter(d => d.status === 'baru' && (!filterPt || d.petugas === filterPt));
+  const kotakBaru = DB.get('kotak_infaq')
+    .filter(k => k.status === 'baru' && (!filterPt || k.petugas === filterPt));
 
-  // Gabung semua prospek
-  const allProspek = [
-    ...allProspekKotak.map(p=>({...p, jenis:'Kotak Infaq'})),
-    ...allProspekSCS.map(p=>({...p, jenis:'SCS'})),
-    ...allProspekRutin.map(p=>({...p, jenis:'Donatur Rutin'}))
-  ].filter(p => p.petugas && (!filterPt || p.petugas === filterPt));
+  const allPengembangan = [
+    ...donaturBaru.map(d => ({ jenis:'Donatur Rutin', nama:d.nama, kota:d.kota||'-', tgl_mulai:d.tgl_mulai||'', nominal:d.nominal||0, petugas:d.petugas||'-', sudahBayar: DB.get('pembayaran_rutin').filter(p=>p.donatur_id===d.id).length })),
+    ...kotakBaru.map(k => ({ jenis:'Kotak Infaq', nama:k.nama_toko||k.nama_kotak||'-', kota:k.kota||'-', tgl_mulai:k.created_at?.slice(0,10)||'', nominal:0, petugas:k.petugas||'-', sudahBayar: DB.get('pengambilan_kotak').filter(a=>a.kotak_id===k.id).length }))
+  ];
 
-  // Rekap prospek per petugas
-  const prospekMap = {};
-  allProspek.forEach(p => {
-    if (!prospekMap[p.petugas]) prospekMap[p.petugas] = { nama:p.petugas, baru:0, dihubungi:0, survei:0, total:0 };
-    prospekMap[p.petugas][p.status] = (prospekMap[p.petugas][p.status]||0) + 1;
-    prospekMap[p.petugas].total++;
+  // Rekap per petugas
+  const pengMap = {};
+  allPengembangan.forEach(p => {
+    if (!pengMap[p.petugas]) pengMap[p.petugas] = { nama:p.petugas, donatur:0, kotak:0, total:0 };
+    if (p.jenis==='Donatur Rutin') pengMap[p.petugas].donatur++;
+    else pengMap[p.petugas].kotak++;
+    pengMap[p.petugas].total++;
   });
-  const rekapProspek = Object.values(prospekMap).sort((a,b) => b.total - a.total);
+  const rekapProspek = Object.values(pengMap).sort((a,b) => b.total - a.total);
 
   document.getElementById('tblProspekPetugas').innerHTML = rekapProspek.length ? rekapProspek.map((r,i) => `
     <tr>
       <td style="text-align:center;font-weight:700;color:var(--gray-400)">${i+1}</td>
       <td style="font-weight:600">${r.nama}</td>
-      <td style="text-align:center">${r.baru||'—'}</td>
-      <td style="text-align:center">${r.dihubungi||'—'}</td>
-      <td style="text-align:center">${r.survei||'—'}</td>
+      <td style="text-align:center;color:var(--success);font-weight:600">${r.donatur||'—'}</td>
+      <td style="text-align:center;color:#f97316;font-weight:600">${r.kotak||'—'}</td>
       <td style="text-align:center;font-weight:700">${r.total}</td>
     </tr>`).join('')
-  : `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--gray-400)">Tidak ada data prospek</td></tr>`;
+  : `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--gray-400)">Tidak ada data pengembangan</td></tr>`;
 
-  // Detail prospek
-  document.getElementById('tblDetailProspek').innerHTML = allProspek.length ? allProspek.map(p => `
+  // Detail pengembangan
+  document.getElementById('tblDetailProspek').innerHTML = allPengembangan.length ? allPengembangan.map(p => `
     <tr>
       <td style="font-weight:600">${p.petugas}</td>
-      <td><span class="badge ${ p.jenis==='Kotak Infaq'?'b-orange':p.jenis==='SCS'?'b-blue':'b-green'}" style="font-size:10px">${p.jenis}</span></td>
-      <td style="font-size:12px">${p.nama_toko||p.nama||'-'}</td>
-      <td style="font-size:12px">${p.kota||'-'}</td>
-      <td>${badge(p.status)}</td>
-      <td style="font-size:12px;color:var(--gray-500);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.catatan||'-'}</td>
+      <td><span class="badge ${p.jenis==='Kotak Infaq'?'b-orange':'b-green'}" style="font-size:10px">${p.jenis}</span></td>
+      <td style="font-size:12px">${p.nama}</td>
+      <td style="font-size:12px">${p.kota}</td>
+      <td style="font-size:12px">${p.tgl_mulai ? tgl(p.tgl_mulai) : '-'}</td>
+      <td style="text-align:center">
+        <span class="badge ${p.sudahBayar>=1?'b-green':'b-gray'}">${p.sudahBayar}x</span>
+        ${p.sudahBayar===0?'<span style="font-size:11px;color:var(--danger)"> ⚠ belum</span>':''}
+      </td>
     </tr>`).join('')
-  : `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--gray-400)">Tidak ada data prospek</td></tr>`;
+  : `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--gray-400)">Tidak ada data pengembangan</td></tr>`;
 
   // REKAP METODE PEMBAYARAN - ambil dari semua sumber
   const periode2 = document.getElementById('flTahun').value +
