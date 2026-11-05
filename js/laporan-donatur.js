@@ -3,9 +3,11 @@
 document.addEventListener('DOMContentLoaded', async () => {
   initFilter();
   renderLaporan();
+  switchTab('semua');
   await Promise.all([DB.sync('donatur_rutin'), DB.sync('pembayaran_rutin')]);
   initFilter();
   renderLaporan();
+  switchTab('semua');
 });
 
 function initFilter() {
@@ -65,7 +67,6 @@ window.renderLaporan = function() {
       <div class="sub">${pct}% dari ${rupiah(targetBulanan)}</div></div></div>`;
 
   // ── TABEL SUDAH BAYAR (donatur aktif saja) ──
-  document.getElementById('cntSudah').textContent = sudah.length;
   document.getElementById('tblSudahBayar').innerHTML = sudah.length ? sudah.map(d => {
     const bayar = bayarPeriode.filter(p => p.donatur_id === d.id);
     return bayar.map((p,i) => `<tr>
@@ -85,7 +86,6 @@ window.renderLaporan = function() {
        <td class="rupiah" style="padding:10px 14px;color:var(--success)">${rupiah(totalSudah)}</td><td></td></tr>` : '';
 
   // ── TABEL BELUM BAYAR (donatur aktif saja) ──
-  document.getElementById('cntBelum').textContent = belum.length;
   document.getElementById('tblBelumBayar').innerHTML = belum.length ? belum.map(d => `
     <tr>
       <td class="td-name">${d.nama}</td>
@@ -103,7 +103,6 @@ window.renderLaporan = function() {
        <td class="rupiah" style="padding:10px 14px;color:var(--danger)">${rupiah(totalBelum)}</td><td colspan="2"></td></tr>` : '';
 
   // ── TABEL DONATUR BARU (status 'baru' — global, bukan per periode) ──
-  document.getElementById('cntDonaturBaru').textContent = donaturBaru.length;
   document.getElementById('tblDonaturBaru').innerHTML = donaturBaru.length ? donaturBaru.map(d => {
     const jmlBayar = DB.get('pembayaran_rutin').filter(p => p.donatur_id === d.id).length;
     return `<tr>
@@ -123,6 +122,16 @@ window.renderLaporan = function() {
   : `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--gray-400)">Tidak ada donatur baru yang menunggu aktif</td></tr>`;
 
   renderRekap(tahun, prog);
+
+  // Update counter tab
+  document.getElementById('cntTabSemua').textContent  = sudah.length + belum.length;
+  document.getElementById('cntTabSudah').textContent  = sudah.length;
+  document.getElementById('cntTabBelum').textContent  = belum.length;
+  document.getElementById('cntTabBaru').textContent   = donaturBaru.length;
+  // juga update badge di stat card yang sudah ada
+  document.getElementById('cntSudah').textContent = sudah.length;
+  document.getElementById('cntBelum').textContent = belum.length;
+  document.getElementById('cntDonaturBaru').textContent = donaturBaru.length;
 };
 
 function renderRekap(tahun, prog) {
@@ -178,4 +187,19 @@ window.exportCSVDonatur = function() {
     petugas: d.petugas||''
   }));
   exportExcel(rows, `LaporanDonatur_${BULAN_NAMA[+bulan-1]}_${tahun}`, 'Donatur Aktif');
+};
+
+window.switchTab = function(tab) {
+  const panes = { semua: ['paneSudah','paneBelum'], sudah: ['paneSudah'], belum: ['paneBelum'], baru: ['paneBaru'], rekap: ['paneRekap'] };
+  const allPanes = ['paneSudah','paneBelum','paneBaru','paneRekap'];
+  const tabs = ['tabSemua','tabSudah','tabBelum','tabBaru','tabRekap'];
+
+  // Reset semua
+  allPanes.forEach(p => { const el = document.getElementById(p); if(el) el.style.display = 'none'; });
+  tabs.forEach(t => { const el = document.getElementById(t); if(el) el.classList.remove('active'); });
+
+  // Tampilkan pane yang dipilih
+  (panes[tab] || allPanes).forEach(p => { const el = document.getElementById(p); if(el) el.style.display = ''; });
+  const activeTab = document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1));
+  if(activeTab) activeTab.classList.add('active');
 };
