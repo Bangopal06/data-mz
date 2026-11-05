@@ -16,7 +16,7 @@ function initFilter() {
   const selTahun = document.getElementById('flTahun');
   const tahunNow = now.getFullYear();
   selTahun.innerHTML = [tahunNow, tahunNow-1, tahunNow-2].map(t =>
-    `<option value="${t}">${t}</option>`).join('');
+    `<option value="${t}" ${t===tahunNow?'selected':''}>${t}</option>`).join('');
 
   // Bulan default = bulan ini
   document.getElementById('flBulan').value = String(now.getMonth()+1).padStart(2,'0');
