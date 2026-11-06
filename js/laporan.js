@@ -247,7 +247,7 @@ window.exportLapKeseluruhan = function() {
   const dr     = DB.get('donatur_rutin');
   const wp     = DB.get('waqaf_program');
 
-  const rows = [
+  const rawRows = [
     ...DB.get('pembayaran_rutin').filter(p=>(p.tgl_bayar||'').startsWith(periode)).map(p=>({
       sumber:'Donatur Rutin', nama:p.nama_donatur||'-', keterangan:dr.find(x=>x.id===p.donatur_id)?.program||'-',
       tanggal:p.tgl_bayar||'', nominal:p.nominal, metode:p.metode||'-', petugas:p.petugas||'-'
@@ -270,6 +270,26 @@ window.exportLapKeseluruhan = function() {
     }))
   ].sort((a,b)=>new Date(b.tanggal)-new Date(a.tanggal));
 
-  if (!rows.length) { toast('Tidak ada data','warn'); return; }
+  if (!rawRows.length) { toast('Tidak ada data','warn'); return; }
+
+  // Hitung kontributor unik per sumber
+  const kontribMap = {};
+  rawRows.forEach(r => {
+    if (!kontribMap[r.sumber]) kontribMap[r.sumber] = new Set();
+    kontribMap[r.sumber].add(r.nama);
+  });
+
+  const rows = rawRows.map((r, i) => ({
+    no: i + 1,
+    sumber: r.sumber,
+    kontributor: kontribMap[r.sumber]?.size || 0,
+    nama: r.nama,
+    keterangan: r.keterangan,
+    tanggal: r.tanggal,
+    nominal: r.nominal,
+    metode: r.metode,
+    petugas: r.petugas
+  }));
+
   exportExcel(rows, `LaporanKeseluruhan_${label}`, 'Semua Sumber');
 };
