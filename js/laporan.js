@@ -274,8 +274,8 @@ window.exportLapKeseluruhan = function() {
 
   const rows = rawRows.map((r, i) => ({
     no: i + 1,
-    sumber: r.sumber,
     nama: r.nama,
+    sumber: r.sumber,
     keterangan: r.keterangan,
     tanggal: r.tanggal,
     nominal: r.nominal,
