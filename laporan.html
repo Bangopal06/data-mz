@@ -113,6 +113,7 @@
         <button class="tab-btn" onclick="switchTabAll('kotak')" id="allTabKotak">🗃️ Kotak Infaq</button>
         <button class="tab-btn" onclick="switchTabAll('scs')" id="allTabScs">📦 S3 & SCS</button>
         <button class="tab-btn" onclick="switchTabAll('isidental')" id="allTabIsidental">🕌 Isidental</button>
+        <button class="tab-btn" onclick="switchTabAll('pengembangan')" id="allTabPengembangan">🌱 Pengembangan</button>
       </div>
 
       <!-- REKAP BULANAN -->
@@ -181,6 +182,38 @@
               <tbody id="tblIsidental"></tbody>
               <tfoot id="footIsidental"></tfoot>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- PENGEMBANGAN -->
+      <div id="allPanePengembangan" style="margin-bottom:24px">
+        <div class="section-title"><div class="status-dot" style="background:#10b981"></div>🌱 Pengembangan — Donatur Baru & Kotak Baru</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px" id="pengGrid"></div>
+
+        <!-- Donatur Baru -->
+        <div style="margin-bottom:16px">
+          <div class="section-title" style="font-size:13px;margin-bottom:8px"><div class="status-dot" style="background:var(--success)"></div>👤 Donatur Baru (Menunggu Aktif) <span id="cntAllDonaturBaru" class="badge b-green" style="margin-left:4px">0</span></div>
+          <div class="card">
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr><th>Nama</th><th>No. HP</th><th>Nominal/Bln</th><th>Tgl Mulai</th><th>Sudah Bayar</th><th>Petugas</th><th>Program</th></tr></thead>
+                <tbody id="tblAllDonaturBaru"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kotak Baru -->
+        <div>
+          <div class="section-title" style="font-size:13px;margin-bottom:8px"><div class="status-dot" style="background:#f97316"></div>🗃️ Kotak Baru (Belum Aktif) <span id="cntAllKotakBaru" class="badge b-orange" style="margin-left:4px">0</span></div>
+          <div class="card">
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr><th>Nama Toko</th><th>Pemilik</th><th>HP</th><th>Kota</th><th>Sudah Diambil</th><th>Petugas</th></tr></thead>
+                <tbody id="tblAllKotakBaru"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

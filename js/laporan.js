@@ -128,6 +128,51 @@ window.renderKeseluruhan = function() {
   document.getElementById('footIsidental').innerHTML = dWaqaf.length
     ? `<tr><td colspan="3" style="padding:10px 14px">TOTAL (${dWaqaf.length} donasi)</td><td class="rupiah" style="padding:10px 14px;color:#8b5cf6">${rupiah(totIsidental)}</td><td colspan="2"></td></tr>` : '';
 
+  // ── PENGEMBANGAN ──
+  const donaturBaru = DB.get('donatur_rutin').filter(d => d.status === 'baru');
+  const kotakBaru   = DB.get('kotak_infaq').filter(k => k.status === 'baru');
+
+  document.getElementById('pengGrid').innerHTML = `
+    <div class="sumber-card">
+      <div class="sc-ico" style="background:#dcfce7">👤</div>
+      <div><div class="sc-lbl">Donatur Baru</div>
+        <div class="sc-val">${donaturBaru.length} donatur</div>
+        <div class="sc-pct">menunggu bayar ke-2</div></div>
+    </div>
+    <div class="sumber-card">
+      <div class="sc-ico" style="background:#fff7ed">🗃️</div>
+      <div><div class="sc-lbl">Kotak Baru</div>
+        <div class="sc-val">${kotakBaru.length} kotak</div>
+        <div class="sc-pct">belum aktif</div></div>
+    </div>`;
+
+  document.getElementById('cntAllDonaturBaru').textContent = donaturBaru.length;
+  document.getElementById('tblAllDonaturBaru').innerHTML = donaturBaru.length ? donaturBaru.map(d => {
+    const jml = DB.get('pembayaran_rutin').filter(p=>p.donatur_id===d.id).length;
+    return `<tr>
+      <td style="font-weight:600">${d.nama}</td>
+      <td class="td-mono">${d.hp||'-'}</td>
+      <td class="rupiah" style="color:var(--success);font-weight:600">${rupiah(d.nominal)}</td>
+      <td style="font-size:12px">${tgl(d.tgl_mulai)}</td>
+      <td style="text-align:center"><span class="badge ${jml>=1?'b-green':'b-gray'}">${jml}x bayar</span></td>
+      <td style="font-size:12px">${d.petugas||'-'}</td>
+      <td style="font-size:12px">${d.program||'-'}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="7" style="text-align:center;padding:16px;color:var(--gray-400)">Tidak ada donatur baru</td></tr>`;
+
+  document.getElementById('cntAllKotakBaru').textContent = kotakBaru.length;
+  document.getElementById('tblAllKotakBaru').innerHTML = kotakBaru.length ? kotakBaru.map(k => {
+    const jml = DB.get('pengambilan_kotak').filter(a=>a.kotak_id===k.id).length;
+    return `<tr>
+      <td style="font-weight:600">${k.nama_toko||'-'}</td>
+      <td style="font-size:12px">${k.pemilik||'-'}</td>
+      <td class="td-mono">${k.hp||'-'}</td>
+      <td style="font-size:12px">${k.kota||'-'}</td>
+      <td style="text-align:center"><span class="badge ${jml>=1?'b-green':'b-gray'}">${jml}x ambil</span></td>
+      <td style="font-size:12px">${k.petugas||'-'}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--gray-400)">Tidak ada kotak baru</td></tr>`;
+
   // ── REKAP BULANAN ──
   renderRekap(tahun);
 };
@@ -180,12 +225,13 @@ function renderRekap(tahun) {
 
 window.switchTabAll = function(tab) {
   const map = {
-    semua: ['allPaneRekap','allPaneDonatur','allPaneKotak','allPaneScs','allPaneIsidental'],
+    semua: ['allPaneRekap','allPaneDonatur','allPaneKotak','allPaneScs','allPaneIsidental','allPanePengembangan'],
     rekap: ['allPaneRekap'], donatur: ['allPaneDonatur'],
-    kotak: ['allPaneKotak'], scs: ['allPaneScs'], isidental: ['allPaneIsidental']
+    kotak: ['allPaneKotak'], scs: ['allPaneScs'],
+    isidental: ['allPaneIsidental'], pengembangan: ['allPanePengembangan']
   };
-  const all  = ['allPaneRekap','allPaneDonatur','allPaneKotak','allPaneScs','allPaneIsidental'];
-  const tabs = ['allTabSemua','allTabRekap','allTabDonatur','allTabKotak','allTabScs','allTabIsidental'];
+  const all  = ['allPaneRekap','allPaneDonatur','allPaneKotak','allPaneScs','allPaneIsidental','allPanePengembangan'];
+  const tabs = ['allTabSemua','allTabRekap','allTabDonatur','allTabKotak','allTabScs','allTabIsidental','allTabPengembangan'];
   all.forEach(p=>{const e=document.getElementById(p);if(e)e.style.display='none';});
   tabs.forEach(t=>{const e=document.getElementById(t);if(e)e.classList.remove('active');});
   (map[tab]||all).forEach(p=>{const e=document.getElementById(p);if(e)e.style.display='';});
