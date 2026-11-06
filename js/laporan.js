@@ -272,17 +272,9 @@ window.exportLapKeseluruhan = function() {
 
   if (!rawRows.length) { toast('Tidak ada data','warn'); return; }
 
-  // Hitung kontributor unik per sumber
-  const kontribMap = {};
-  rawRows.forEach(r => {
-    if (!kontribMap[r.sumber]) kontribMap[r.sumber] = new Set();
-    kontribMap[r.sumber].add(r.nama);
-  });
-
   const rows = rawRows.map((r, i) => ({
     no: i + 1,
     sumber: r.sumber,
-    kontributor: kontribMap[r.sumber]?.size || 0,
     nama: r.nama,
     keterangan: r.keterangan,
     tanggal: r.tanggal,
