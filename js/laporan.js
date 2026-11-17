@@ -128,6 +128,53 @@ window.renderKeseluruhan = function() {
   document.getElementById('footIsidental').innerHTML = dWaqaf.length
     ? `<tr><td colspan="3" style="padding:10px 14px">TOTAL (${dWaqaf.length} donasi)</td><td class="rupiah" style="padding:10px 14px;color:#8b5cf6">${rupiah(totIsidental)}</td><td colspan="2"></td></tr>` : '';
 
+  // ── REKAP METODE PEMBAYARAN ──
+  const metodeTotal = {};
+  const addMetode = (m, nominal) => {
+    if (!metodeTotal[m]) metodeTotal[m] = { jml:0, total:0 };
+    metodeTotal[m].jml++;
+    metodeTotal[m].total += nominal;
+  };
+  bayarRutin.forEach(b => addMetode(b.metode || 'transfer', +b.nominal||0));
+  ambilKotak.forEach(a => addMetode('tunai', +a.nominal||0));
+  bayarSCS.forEach(b => addMetode('tunai', +b.nominal||0));
+  bayarS3.forEach(b => addMetode('tunai', +b.nominal||0));
+  donasiWaqaf.forEach(d => addMetode(d.metode || 'transfer', +d.nominal||0));
+
+  const grandMetode = Object.values(metodeTotal).reduce((s,m) => s + m.total, 0);
+  const tblMetode = document.getElementById('tblMetodePembayaran');
+  if (tblMetode) {
+    tblMetode.innerHTML = Object.entries(metodeTotal).sort((a,b) => b[1].total - a[1].total).map(([m, v]) => {
+      const pct   = grandMetode ? Math.round(v.total / grandMetode * 100) : 0;
+      const color = m==='tunai'?'#f97316': m==='transfer'?'var(--primary)': m==='qris'?'#8b5cf6':'var(--gray-400)';
+      const icon  = m==='tunai'?'💵': m==='transfer'?'🏦': m==='qris'?'📱':'💳';
+      return `<tr>
+        <td style="font-weight:600">${icon} ${m.charAt(0).toUpperCase()+m.slice(1)}</td>
+        <td style="text-align:center">${v.jml}x</td>
+        <td class="rupiah" style="font-weight:700;color:${color}">${rupiah(v.total)}</td>
+        <td style="min-width:140px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="flex:1;height:8px;background:var(--gray-200);border-radius:99px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:${color};border-radius:99px"></div>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:${color}">${pct}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--gray-400)">Tidak ada data</td></tr>`;
+  }
+  const footMetode = document.getElementById('footMetodePembayaran');
+  if (footMetode) {
+    const totalJml = Object.values(metodeTotal).reduce((s,m) => s + m.jml, 0);
+    footMetode.innerHTML = `
+      <tr style="background:var(--gray-800);color:white">
+        <td style="padding:10px 14px">TOTAL SEMUA</td>
+        <td style="padding:10px 14px;text-align:center">${totalJml}x</td>
+        <td class="rupiah" style="padding:10px 14px">${rupiah(grandMetode)}</td>
+        <td style="padding:10px 14px">100%</td>
+      </tr>`;
+  }
+
   // ── PENGEMBANGAN ──
   const donaturBaru = DB.get('donatur_rutin').filter(d => d.status === 'baru');
   const kotakBaru   = DB.get('kotak_infaq').filter(k => k.status === 'baru');
@@ -225,13 +272,14 @@ function renderRekap(tahun) {
 
 window.switchTabAll = function(tab) {
   const map = {
-    semua: ['allPaneRekap','allPaneDonatur','allPaneKotak','allPaneScs','allPaneIsidental','allPanePengembangan'],
+    semua: ['allPaneMetode','allPaneRekap','allPaneDonatur','allPaneKotak','allPaneScs','allPaneIsidental','allPanePengembangan'],
+    metode: ['allPaneMetode'],
     rekap: ['allPaneRekap'], donatur: ['allPaneDonatur'],
     kotak: ['allPaneKotak'], scs: ['allPaneScs'],
     isidental: ['allPaneIsidental'], pengembangan: ['allPanePengembangan']
   };
-  const all  = ['allPaneRekap','allPaneDonatur','allPaneKotak','allPaneScs','allPaneIsidental','allPanePengembangan'];
-  const tabs = ['allTabSemua','allTabRekap','allTabDonatur','allTabKotak','allTabScs','allTabIsidental','allTabPengembangan'];
+  const all  = ['allPaneMetode','allPaneRekap','allPaneDonatur','allPaneKotak','allPaneScs','allPaneIsidental','allPanePengembangan'];
+  const tabs = ['allTabSemua','allTabRekap','allTabMetode','allTabDonatur','allTabKotak','allTabScs','allTabIsidental','allTabPengembangan'];
   all.forEach(p=>{const e=document.getElementById(p);if(e)e.style.display='none';});
   tabs.forEach(t=>{const e=document.getElementById(t);if(e)e.classList.remove('active');});
   (map[tab]||all).forEach(p=>{const e=document.getElementById(p);if(e)e.style.display='';});

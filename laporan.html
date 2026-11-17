@@ -110,11 +110,26 @@
       <div class="tabs-bar no-print">
         <button class="tab-btn active" onclick="switchTabAll('semua')" id="allTabSemua">📋 Semua</button>
         <button class="tab-btn" onclick="switchTabAll('rekap')" id="allTabRekap">📅 Rekap Bulanan</button>
+        <button class="tab-btn" onclick="switchTabAll('metode')" id="allTabMetode">💳 Metode Bayar</button>
         <button class="tab-btn" onclick="switchTabAll('donatur')" id="allTabDonatur">💚 Donatur Rutin</button>
         <button class="tab-btn" onclick="switchTabAll('kotak')" id="allTabKotak">🗃️ Kotak Infaq</button>
         <button class="tab-btn" onclick="switchTabAll('scs')" id="allTabScs">📦 S3 & SCS</button>
         <button class="tab-btn" onclick="switchTabAll('isidental')" id="allTabIsidental">🕌 Isidental</button>
         <button class="tab-btn" onclick="switchTabAll('pengembangan')" id="allTabPengembangan">🌱 Pengembangan</button>
+      </div>
+
+      <!-- METODE PEMBAYARAN -->
+      <div id="allPaneMetode" style="margin-bottom:24px">
+        <div class="section-title"><div class="status-dot" style="background:#0ea5e9"></div>💳 Rekap per Metode Pembayaran</div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Metode</th><th>Transaksi</th><th>Total</th><th>Proporsi</th></tr></thead>
+              <tbody id="tblMetodePembayaran"></tbody>
+              <tfoot id="footMetodePembayaran"></tfoot>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- REKAP BULANAN -->
