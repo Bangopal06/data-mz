@@ -208,7 +208,6 @@ function loadDonaturWQ() {
       <td class="td-name">${d.nama}</td>
       <td class="td-mono">${d.hp||'-'}</td>
       <td style="font-size:12px">${p?.nama||'-'}</td>
-      <td style="font-size:12px">${p?.metode_waqaf||d.metode||'-'}</td>
       <td class="rupiah" style="font-weight:700;color:var(--purple)">${rupiah(d.nominal)}</td>
       <td style="font-size:12px">${tgl(d.tgl_donasi)}</td>
       <td style="font-size:12px">${d.metode||'-'}</td>
