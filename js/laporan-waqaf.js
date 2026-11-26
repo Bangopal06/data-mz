@@ -202,11 +202,17 @@ window.exportLaporanWaqaf = function() {
   const data = DB.get('donatur_waqaf').filter(d=>d.tgl_donasi?.startsWith(tahun)).map(d => ({
     nama_donatur: d.nama, hp: d.hp||'', kota: d.kota||'',
     program: wp.find(w=>w.id===d.program_id)?.nama||'',
-    metode_waqaf: wp.find(w=>w.id===d.program_id)?.metode_waqaf||'',
     nominal: d.nominal, tgl_donasi: d.tgl_donasi||'',
     metode_bayar: d.metode||'', status: d.status||'', petugas: d.petugas||''
   }));
-  exportExcel(data, `LaporanWaqaf_${tahun}`, 'Waqaf');
+  if (!data.length) { toast('Tidak ada data','warn'); return; }
+  const metodeMap = {};
+  data.forEach(r => {
+    const m = (r.metode_bayar||'tunai').toLowerCase();
+    if (!metodeMap[m]) metodeMap[m] = 0;
+    metodeMap[m] += +r.nominal||0;
+  });
+  exportExcelWithMetodeSummary(data, `LaporanWaqaf_${tahun}`, 'Waqaf', metodeMap);
 };
 
 window.switchTabWaqaf = function(tab) {

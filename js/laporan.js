@@ -331,5 +331,12 @@ window.exportLapKeseluruhan = function() {
     petugas: r.petugas
   }));
 
-  exportExcel(rows, `LaporanKeseluruhan_${label}`, 'Semua Sumber');
+  // Hitung ringkasan per metode
+  const metodeMap = {};
+  rawRows.forEach(r => {
+    const m = (r.metode||'lainnya').toLowerCase();
+    if (!metodeMap[m]) metodeMap[m] = 0;
+    metodeMap[m] += +r.nominal||0;
+  });
+  exportExcelWithMetodeSummary(rows, `LaporanKeseluruhan_${label}`, 'Semua Sumber', metodeMap);
 };

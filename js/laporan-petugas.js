@@ -310,24 +310,30 @@ window.exportLaporanPetugas = function() {
   const rows = [];
 
   DB.get('pembayaran_rutin').filter(p=>p.petugas&&(p.tgl_bayar||'').startsWith(periode)).forEach(p => {
-    rows.push({ petugas:p.petugas, jenis:'Donatur Rutin', nama:dr.find(d=>d.id===p.donatur_id)?.nama||p.nama_donatur||'-', nominal:p.nominal, tgl:p.tgl_bayar||'' });
+    rows.push({ petugas:p.petugas, jenis:'Donatur Rutin', nama:dr.find(d=>d.id===p.donatur_id)?.nama||p.nama_donatur||'-', nominal:p.nominal, tgl:p.tgl_bayar||'', metode:p.metode||'tunai' });
   });
   DB.get('pengambilan_kotak').filter(a=>a.petugas&&(a.tgl_ambil||'').startsWith(periode)).forEach(a => {
-    rows.push({ petugas:a.petugas, jenis:'Kotak Infaq', nama:a.nama_toko||'-', nominal:a.nominal, tgl:a.tgl_ambil||'' });
+    rows.push({ petugas:a.petugas, jenis:'Kotak Infaq', nama:a.nama_toko||'-', nominal:a.nominal, tgl:a.tgl_ambil||'', metode:'tunai' });
   });
   DB.get('scs_pembayaran').filter(b=>b.petugas&&(b.tgl_bayar||'').startsWith(periode)).forEach(b => {
-    rows.push({ petugas:b.petugas, jenis:'SCS', nama:b.nama_santri||'-', nominal:b.nominal, tgl:b.tgl_bayar||'' });
+    rows.push({ petugas:b.petugas, jenis:'SCS', nama:b.nama_santri||'-', nominal:b.nominal, tgl:b.tgl_bayar||'', metode:'tunai' });
   });
   DB.get('s3_pembayaran').filter(b=>b.petugas&&(b.tgl_bayar||'').startsWith(periode)).forEach(b => {
-    rows.push({ petugas:b.petugas, jenis:'S3', nama:b.nama_ustadz||'-', nominal:b.nominal, tgl:b.tgl_bayar||'' });
+    rows.push({ petugas:b.petugas, jenis:'S3', nama:b.nama_ustadz||'-', nominal:b.nominal, tgl:b.tgl_bayar||'', metode:'tunai' });
   });
   DB.get('donatur_waqaf').filter(d=>d.petugas&&(d.tgl_donasi||'').startsWith(periode)).forEach(d => {
-    rows.push({ petugas:d.petugas, jenis:'Isidental', nama:d.nama||'-', nominal:d.nominal, tgl:d.tgl_donasi||'' });
+    rows.push({ petugas:d.petugas, jenis:'Isidental', nama:d.nama||'-', nominal:d.nominal, tgl:d.tgl_donasi||'', metode:d.metode||'tunai' });
   });
 
   rows.sort((a,b)=>new Date(b.tgl)-new Date(a.tgl));
   if (!rows.length) { toast('Tidak ada data','warn'); return; }
-  exportExcel(rows, `LaporanPetugas_${periode}`, 'Petugas');
+  const metodeMap = {};
+  rows.forEach(r => {
+    const m = (r.metode||'tunai').toLowerCase();
+    if (!metodeMap[m]) metodeMap[m] = 0;
+    metodeMap[m] += +r.nominal||0;
+  });
+  exportExcelWithMetodeSummary(rows, `LaporanPetugas_${periode}`, 'Petugas', metodeMap);
 };
 
 window.switchTabPetugas = function(tab) {
