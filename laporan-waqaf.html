@@ -68,6 +68,18 @@
       <!-- FILTER -->
       <div class="period-bar no-print">
         <div class="fg">
+          <label class="flabel">Bulan</label>
+          <select id="flBulan" class="fctrl" onchange="renderWaqaf()">
+            <option value="">Semua Bulan</option>
+            <option value="01">Januari</option><option value="02">Februari</option>
+            <option value="03">Maret</option><option value="04">April</option>
+            <option value="05">Mei</option><option value="06">Juni</option>
+            <option value="07">Juli</option><option value="08">Agustus</option>
+            <option value="09">September</option><option value="10">Oktober</option>
+            <option value="11">November</option><option value="12">Desember</option>
+          </select>
+        </div>
+        <div class="fg">
           <label class="flabel">Tahun</label>
           <select id="flTahun" class="fctrl" onchange="renderWaqaf()"></select>
         </div>
@@ -101,36 +113,19 @@
       <!-- TAB BAR -->
       <div class="tabs-bar no-print">
         <button class="tab-btn active" onclick="switchTabWaqaf('semua')" id="wqTabSemua">📋 Semua</button>
-        <button class="tab-btn" onclick="switchTabWaqaf('program')" id="wqTabProgram">🕌 Rekap Program</button>
         <button class="tab-btn" onclick="switchTabWaqaf('donasi')" id="wqTabDonasi">💚 Riwayat Donasi <span id="wqCntDonasi" class="badge b-green" style="margin-left:4px">0</span></button>
         <button class="tab-btn" onclick="switchTabWaqaf('rekap')" id="wqTabRekap">📅 Rekap Bulanan</button>
         <button class="tab-btn" onclick="switchTabWaqaf('top')" id="wqTabTop">🏆 Top Donatur</button>
       </div>
 
-      <!-- REKAP PER PROGRAM -->
-      <div id="wqPaneProgram" style="margin-bottom:24px">
-        <div class="section-title"><div class="status-dot dot-purple"></div>🕌 Rekap Per Program Isidental</div>
-        <div class="card">
-          <div class="tbl-wrap">
-            <table>
-              <thead>
-                <tr><th>Nama Program</th><th>Kategori</th><th>Metode Waqaf</th><th>Target</th><th>Terkumpul</th><th>Progress</th><th>Donatur</th><th>Status</th></tr>
-              </thead>
-              <tbody id="tblRekapProgram"></tbody>
-              <tfoot id="footRekapProgram"></tfoot>
-            </table>
-          </div>
-        </div>
-      </div>
-
       <!-- RIWAYAT DONASI -->
       <div id="wqPaneDonasi" style="margin-bottom:24px">
-        <div class="section-title"><div class="status-dot dot-green"></div>💚 Riwayat Donasi Waqaf <span id="cntDonasi" class="badge b-green" style="margin-left:4px">0</span></div>
+        <div class="section-title"><div class="status-dot dot-green"></div>💚 Riwayat Donasi Isidental <span id="cntDonasi" class="badge b-green" style="margin-left:4px">0</span></div>
         <div class="card">
           <div class="tbl-wrap">
             <table>
               <thead>
-                <tr><th>Nama Donatur</th><th>HP</th><th>Program</th><th>Metode Waqaf</th><th>Nominal</th><th>Tgl Donasi</th><th>Metode Bayar</th><th>Status</th><th>Petugas</th></tr>
+                <tr><th>Nama Donatur</th><th>HP</th><th>Program</th><th>Nominal</th><th>Tgl Donasi</th><th>Metode</th><th>Status</th><th>Petugas</th></tr>
               </thead>
               <tbody id="tblDonasi"></tbody>
               <tfoot id="footDonasi"></tfoot>

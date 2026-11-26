@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById(id)?.addEventListener('input', debounce(() => { pgProg=1; loadProgram(); }));
     document.getElementById(id)?.addEventListener('change', () => { pgProg=1; loadProgram(); });
   });
-  ['srDonWQ','flProgDon','flStDon'].forEach(id => {
+  ['srDonWQ','flProgDon','flStDon','flBulanDon','flTahunDon'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', debounce(() => { pgDonWQ=1; loadDonaturWQ(); }));
     document.getElementById(id)?.addEventListener('change', () => { pgDonWQ=1; loadDonaturWQ(); });
   });
@@ -42,15 +42,11 @@ function loadWqStats() {
   const wp = DB.get('waqaf_program');
   const dw = DB.get('donatur_waqaf');
   const pw = DB.get('prospek_waqaf');
-  const totalTarget = wp.reduce((s,w)=>s+(+w.target||0),0);
-  const totalTerkumpul = wp.reduce((s,w)=>s+(+w.terkumpul||0),0);
   const totalDonasi = dw.reduce((s,d)=>s+(+d.nominal||0),0);
-  const pct = totalTarget ? Math.round(totalTerkumpul/totalTarget*100) : 0;
   document.getElementById('wqStats').innerHTML = `
     <div class="stat"><div class="stat-ico ic-purple">🕌</div><div class="stat-body"><div class="lbl">Program Aktif</div><div class="val">${wp.filter(w=>w.status==='aktif').length}</div><div class="sub">${wp.length} total program</div></div></div>
-    <div class="stat"><div class="stat-ico ic-green">💚</div><div class="stat-body"><div class="lbl">Donatur Waqaf</div><div class="val">${dw.length}</div></div></div>
+    <div class="stat"><div class="stat-ico ic-green">💚</div><div class="stat-body"><div class="lbl">Donatur</div><div class="val">${dw.length}</div></div></div>
     <div class="stat"><div class="stat-ico ic-blue">👤</div><div class="stat-body"><div class="lbl">Prospek</div><div class="val">${pw.length}</div></div></div>
-    <div class="stat"><div class="stat-ico ic-teal">🎯</div><div class="stat-body"><div class="lbl">Terkumpul</div><div class="val rupiah" style="font-size:14px">${rupiah(totalTerkumpul)}</div><div class="sub">${pct}% dari target ${rupiah(totalTarget)}</div></div></div>
     <div class="stat"><div class="stat-ico ic-orange">💰</div><div class="stat-body"><div class="lbl">Total Donasi</div><div class="val rupiah" style="font-size:14px">${rupiah(totalDonasi)}</div></div></div>
   `;
 }
@@ -60,6 +56,17 @@ function loadProgramFilter() {
   const opts = '<option value="">Semua Program</option>' + wp.map(w=>`<option value="${w.id}">${w.nama}</option>`).join('');
   document.getElementById('flProgDon').innerHTML = opts;
   document.getElementById('flProgPros').innerHTML = opts;
+  // Init tahun filter donatur
+  const now = new Date();
+  const tEl = document.getElementById('flTahunDon');
+  if (tEl) {
+    const y = now.getFullYear();
+    tEl.innerHTML = `<option value="">Semua Tahun</option>` +
+      [y, y-1, y-2].map(t=>`<option value="${t}" ${t===y?'selected':''}>${t}</option>`).join('');
+  }
+  // Set bulan default = bulan ini
+  const bEl = document.getElementById('flBulanDon');
+  if (bEl && !bEl.value) bEl.value = String(now.getMonth()+1).padStart(2,'0');
 }
 
 function progressBar(terkumpul, target) {
@@ -88,7 +95,9 @@ function loadProgram() {
   document.getElementById('cntProg').textContent = data.length;
   const { items, total } = paginate(data, pgProg, PS);
   document.getElementById('progGrid').innerHTML = items.length ? items.map(w => {
-    const donaturCount = DB.get('donatur_waqaf').filter(d=>d.program_id===w.id).length;
+    const donaturList = DB.get('donatur_waqaf').filter(d=>d.program_id===w.id);
+    const donaturCount = donaturList.length;
+    const totalMasuk = donaturList.filter(d=>d.status==='lunas').reduce((s,d)=>s+(+d.nominal||0),0);
     const ikon = {masjid:'🕌',pendidikan:'📚',kesehatan:'🏥',sosial:'🤝'}[w.kategori]||'🌟';
     return `<div class="prog-card">
       <div class="pc-icon">${ikon}</div>
@@ -96,12 +105,13 @@ function loadProgram() {
         <div class="pc-name">${w.nama}</div>${badge(w.status)}
       </div>
       <div class="pc-desc">${w.deskripsi||''}</div>
-      ${progressBar(w.terkumpul, w.target)}
+      <div style="margin:10px 0 10px">
+        <span style="font-size:12px;color:var(--gray-500)">Total Terkumpul: </span>
+        <span style="font-weight:700;color:var(--primary)">${rupiah(totalMasuk)}</span>
+      </div>
       <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
         ${badge(w.kategori)}
         <span class="badge b-gray">${donaturCount} donatur</span>
-        ${w.tgl_target?`<span class="badge b-gray">s/d ${tgl(w.tgl_target)}</span>`:''}
-        ${w.metode_waqaf?`<span class="badge b-blue">${w.metode_waqaf}</span>`:''}
       </div>
       <div class="pc-foot">
         <button class="btn btn-primary btn-sm" onclick="openModalDonWQ(null,'${w.id}')">+ Catat Donasi</button>
@@ -129,19 +139,9 @@ window.openModalProgram = function(id=null) {
           <div class="fg"><label class="flabel">Kategori</label>
             <select id="wpKat" class="fctrl">${['masjid','pendidikan','kesehatan','sosial'].map(k=>`<option value="${k}" ${w?.kategori===k?'selected':''}>${k}</option>`).join('')}</select>
           </div>
-          <div class="fg"><label class="flabel">Metode Waqaf</label>
-            <select id="wpMetode" class="fctrl">${['tunai','aset','saham','produktif','wakaf_uang','lainnya'].map(m=>`<option value="${m}" ${w?.metode_waqaf===m?'selected':''}>${m}</option>`).join('')}</select>
-          </div>
           <div class="fg"><label class="flabel">Status</label>
             <select id="wpStatus" class="fctrl">${['aktif','selesai','ditangguhkan'].map(s=>`<option value="${s}" ${w?.status===s?'selected':''}>${s}</option>`).join('')}</select>
           </div>
-        </div>
-        <div class="sec-div">Target & Periode</div>
-        <div class="fgrid">
-          <div class="fg"><label class="flabel">Target Dana (Rp) *</label><input type="number" id="wpTarget" class="fctrl" value="${w?.target||''}" placeholder="0"></div>
-          <div class="fg"><label class="flabel">Terkumpul (Rp)</label><input type="number" id="wpTerkumpul" class="fctrl" value="${w?.terkumpul||0}"></div>
-          <div class="fg"><label class="flabel">Tanggal Mulai</label><input type="date" id="wpMulai" class="fctrl" value="${tglInput(w?.tgl_mulai)||''}"></div>
-          <div class="fg"><label class="flabel">Tanggal Target</label><input type="date" id="wpTarget2" class="fctrl" value="${tglInput(w?.tgl_target)||''}"></div>
         </div>
       </div>
       <div class="modal-foot">
@@ -155,23 +155,16 @@ window.openModalProgram = function(id=null) {
 
 window.saveProgram = async function(id) {
   const nama = document.getElementById('wpNama').value.trim();
-  const target = +document.getElementById('wpTarget').value;
-  if (!nama || !target) { toast('Nama dan target wajib diisi','warn'); return; }
+  if (!nama) { toast('Nama wajib diisi','warn'); return; }
   const ok = await confirmSave(`Simpan Isidental <strong>${nama}</strong>?`);
   if (!ok) return;
-  // Disable tombol simpan supaya tidak bisa diklik dua kali
   const btnSimpan = document.querySelector('#ovProgram .btn-primary');
   if (btnSimpan) { btnSimpan.disabled = true; btnSimpan.textContent = 'Menyimpan...'; }
   const payload = {
     nama,
     deskripsi: document.getElementById('wpDesc').value.trim(),
     kategori: document.getElementById('wpKat').value,
-    metode_waqaf: document.getElementById('wpMetode').value,
-    target,
-    terkumpul: +document.getElementById('wpTerkumpul').value||0,
     status: document.getElementById('wpStatus').value,
-    tgl_mulai: document.getElementById('wpMulai').value||null,
-    tgl_target: document.getElementById('wpTarget2').value||null
   };
   const r = id ? await DB.update('waqaf_program', id, payload) : await DB.insert('waqaf_program', payload);
   if (!r) { toast('Gagal menyimpan','err'); return; }
@@ -193,12 +186,17 @@ window.hapusProgram = async function(id) {
 function loadDonaturWQ() {
   let data = DB.get('donatur_waqaf');
   const wp = DB.get('waqaf_program');
-  const sr = document.getElementById('srDonWQ').value.toLowerCase();
+  const sr   = document.getElementById('srDonWQ').value.toLowerCase();
   const prog = document.getElementById('flProgDon').value;
-  const st = document.getElementById('flStDon').value;
+  const st   = document.getElementById('flStDon').value;
+  const bulan = document.getElementById('flBulanDon')?.value || '';
+  const tahun = document.getElementById('flTahunDon')?.value || '';
+  const periode = bulan && tahun ? `${tahun}-${bulan}` : tahun || '';
+
   if (sr) data = data.filter(d=>d.nama.toLowerCase().includes(sr));
   if (prog) data = data.filter(d=>d.program_id===prog);
   if (st) data = data.filter(d=>d.status===st);
+  if (periode) data = data.filter(d=>(d.tgl_donasi||'').startsWith(periode));
   data.sort((a,b)=>new Date(b.tgl_donasi)-new Date(a.tgl_donasi));
   document.getElementById('cntDonWQ').textContent = data.length;
   const { items, total } = paginate(data, pgDonWQ, PS);
@@ -283,28 +281,18 @@ window.saveDonWQ = async function(id) {
   };
   const r = id ? await DB.update('donatur_waqaf', id, payload) : await DB.insert('donatur_waqaf', payload);
   if (!r) { toast('Gagal menyimpan','err'); return; }
-  // Sync dulu biar cache fresh, lalu hitung terkumpul
   await DB.sync('donatur_waqaf', { force: true });
-  const allDon = DB.get('donatur_waqaf');
-  const totalProg = allDon.filter(d=>d.program_id===programId&&d.status==='lunas').reduce((s,d)=>s+(+d.nominal||0),0);
-  await DB.update('waqaf_program', programId, { terkumpul: totalProg });
   await DB.sync('waqaf_program', { force: true });
-  toast(id?'Data diperbarui':'Donasi waqaf berhasil dicatat','ok');
+  toast(id?'Data diperbarui':'Donasi berhasil dicatat','ok');
   closeModal('ovDonWQ');
   loadWqStats(); loadProgram(); loadDonaturWQ();
 };
 
 window.hapusDonWQ = async function(id) {
   if (!await confirmDel()) return;
-  const d = DB.get('donatur_waqaf').find(x=>x.id===id);
   if (!await DB.delete('donatur_waqaf', id)) { toast('Gagal menghapus','err'); return; }
   await DB.sync('donatur_waqaf', { force: true });
-  if (d?.program_id) {
-    const allDon = DB.get('donatur_waqaf');
-    const totalProg = allDon.filter(x=>x.program_id===d.program_id&&x.status==='lunas').reduce((s,x)=>s+(+x.nominal||0),0);
-    await DB.update('waqaf_program', d.program_id, { terkumpul: totalProg });
-    await DB.sync('waqaf_program', { force: true });
-  }
+  await DB.sync('waqaf_program', { force: true });
   toast('Dihapus','ok');
   loadWqStats(); loadDonaturWQ(); loadProgram();
 };
