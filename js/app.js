@@ -155,8 +155,8 @@ const _LABEL_MAP = {
 function exportExcelWithMetodeSummary(data, name, sheetName='Data', metodeMap={}) {
   if (!data.length) { toast('Tidak ada data','warn'); return; }
 
-  // Gunakan xlsx-js-style jika tersedia, fallback ke SheetJS biasa
-  const XS = (typeof XLSXStyle !== 'undefined') ? XLSXStyle : (typeof XLSX !== 'undefined' ? XLSX : null);
+  // xlsx-js-style mengexpose global XLSX dengan support .s (style)
+  const XS = (typeof XLSX !== 'undefined') ? XLSX : null;
   if (!XS) { toast('Library Excel belum siap','warn'); return; }
 
   const isNominal = k => k.includes('nominal') || k === 'total_bulan_ini';
@@ -174,8 +174,8 @@ function exportExcelWithMetodeSummary(data, name, sheetName='Data', metodeMap={}
   const fmtRp   = n => 'Rp ' + Number(+n||0).toLocaleString('id-ID');
 
   // ── Style definitions ──
-  const hasStyle = typeof XLSXStyle !== 'undefined';
-  const mkStyle = (s) => hasStyle ? s : {};
+  const hasStyle = true; // xlsx-js-style selalu support .s style
+  const mkStyle = (s) => s;
 
   const stTitle = mkStyle({
     font:  { name:'Calibri', sz:14, bold:true, color:{rgb:'FFFFFF'} },
@@ -226,8 +226,8 @@ function exportExcelWithMetodeSummary(data, name, sheetName='Data', metodeMap={}
   const stMTotal = mkStyle({ ...stTotal, fill:{fgColor:{rgb:'2C3E50'}} });
   const stMTotalNum = mkStyle({ ...stTotalNum, fill:{fgColor:{rgb:'2C3E50'}} });
 
-  const mkCell = (v, s) => hasStyle ? { v, s, t: typeof v === 'number' ? 'n' : 's' } : { v, t: typeof v === 'number' ? 'n' : 's' };
-  const mkNum  = (v, s, fmt='#,##0') => hasStyle ? { v:+v||0, s, t:'n', z:fmt } : { v:+v||0, t:'n', z:fmt };
+  const mkCell = (v, s) => ({ v, s, t: typeof v === 'number' ? 'n' : 's' });
+  const mkNum  = (v, s, fmt='#,##0') => ({ v:+v||0, s, t:'n', z:fmt });
 
   // ── Lebar kolom ──
   const colWidths = keys.map((k, ci) => {
