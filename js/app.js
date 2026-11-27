@@ -139,7 +139,6 @@ function exportExcel(data, name, sheetName='Data') {
   exportExcelWithMetodeSummary(data, name, sheetName, {});
 }
 
-// Label map untuk header kolom
 const _LABEL_MAP = {
   nama:'Nama', hp:'No. HP', alamat:'Alamat', kota:'Kota', program:'Program',
   nominal_rutin:'Nominal Rutin', nominal:'Nominal', nominal_per_bulan:'Nominal/Bulan',
@@ -152,6 +151,205 @@ const _LABEL_MAP = {
   nama_donatur:'Nama Donatur', tgl_donasi:'Tgl Donasi', tgl_ambil:'Tgl Ambil',
   jenis:'Jenis', kelas:'Kelas', halaqoh:'Halaqoh', amanah:'Amanah'
 };
+
+function exportExcelWithMetodeSummary(data, name, sheetName='Data', metodeMap={}) {
+  if (!data.length) { toast('Tidak ada data','warn'); return; }
+
+  // Gunakan xlsx-js-style jika tersedia, fallback ke SheetJS biasa
+  const XS = (typeof XLSXStyle !== 'undefined') ? XLSXStyle : (typeof XLSX !== 'undefined' ? XLSX : null);
+  if (!XS) { toast('Library Excel belum siap','warn'); return; }
+
+  const isNominal = k => k.includes('nominal') || k === 'total_bulan_ini';
+  const isTanggal = k => k.startsWith('tgl') || k === 'tanggal';
+  const fmtTgl = v => {
+    if (!v || v === '-') return '-';
+    const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : String(v);
+  };
+
+  const keys    = Object.keys(data[0]);
+  const headers = keys.map(k => _LABEL_MAP[k] || k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
+  const dateStr = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+  const title   = 'LAPORAN ' + name.replace(/_/g,' ').toUpperCase();
+  const fmtRp   = n => 'Rp ' + Number(+n||0).toLocaleString('id-ID');
+
+  // ── Style definitions ──
+  const hasStyle = typeof XLSXStyle !== 'undefined';
+  const mkStyle = (s) => hasStyle ? s : {};
+
+  const stTitle = mkStyle({
+    font:  { name:'Calibri', sz:14, bold:true, color:{rgb:'FFFFFF'} },
+    fill:  { fgColor:{rgb:'1A7340'} },
+    alignment: { horizontal:'center', vertical:'center', wrapText:false },
+    border: { bottom:{style:'medium', color:{rgb:'0F4F28'}} }
+  });
+  const stSub = mkStyle({
+    font:  { name:'Calibri', sz:10, italic:true, color:{rgb:'555555'} },
+    fill:  { fgColor:{rgb:'E8F5E9'} },
+    alignment: { horizontal:'center' }
+  });
+  const stHeader = mkStyle({
+    font:  { name:'Calibri', sz:11, bold:true, color:{rgb:'FFFFFF'} },
+    fill:  { fgColor:{rgb:'1A7340'} },
+    alignment: { horizontal:'center', vertical:'center', wrapText:true },
+    border: { top:{style:'thin',color:{rgb:'0F4F28'}}, bottom:{style:'thin',color:{rgb:'0F4F28'}}, left:{style:'thin',color:{rgb:'0F4F28'}}, right:{style:'thin',color:{rgb:'0F4F28'}} }
+  });
+  const stDataEven = mkStyle({
+    font:  { name:'Calibri', sz:10 },
+    fill:  { fgColor:{rgb:'FFFFFF'} },
+    border: { bottom:{style:'hair',color:{rgb:'D0E8D8'}}, right:{style:'hair',color:{rgb:'D0E8D8'}} },
+    alignment: { vertical:'center', wrapText:false }
+  });
+  const stDataOdd = mkStyle({
+    font:  { name:'Calibri', sz:10 },
+    fill:  { fgColor:{rgb:'F2F9F5'} },
+    border: { bottom:{style:'hair',color:{rgb:'D0E8D8'}}, right:{style:'hair',color:{rgb:'D0E8D8'}} },
+    alignment: { vertical:'center', wrapText:false }
+  });
+  const stNumEven = mkStyle({ ...stDataEven, alignment:{...stDataEven.alignment, horizontal:'right'} });
+  const stNumOdd  = mkStyle({ ...stDataOdd,  alignment:{...stDataOdd.alignment,  horizontal:'right'} });
+  const stTotal = mkStyle({
+    font:  { name:'Calibri', sz:10, bold:true, color:{rgb:'FFFFFF'} },
+    fill:  { fgColor:{rgb:'2C3E50'} },
+    border: { top:{style:'medium',color:{rgb:'FFFFFF'}} },
+    alignment: { vertical:'center' }
+  });
+  const stTotalNum = mkStyle({ ...stTotal, alignment:{...stTotal.alignment, horizontal:'right'} });
+  const stMHead = mkStyle({
+    font:  { name:'Calibri', sz:11, bold:true, color:{rgb:'FFFFFF'} },
+    fill:  { fgColor:{rgb:'1A4F7A'} },
+    alignment: { horizontal:'center', vertical:'center' }
+  });
+  const stMTh = mkStyle({ ...stHeader, fill:{fgColor:{rgb:'1A4F7A'}} });
+  const stMEven = mkStyle({ ...stDataEven, fill:{fgColor:{rgb:'F0F7FF'}} });
+  const stMOdd  = mkStyle({ ...stDataOdd,  fill:{fgColor:{rgb:'E8F4FD'}} });
+  const stMTotal = mkStyle({ ...stTotal, fill:{fgColor:{rgb:'2C3E50'}} });
+  const stMTotalNum = mkStyle({ ...stTotalNum, fill:{fgColor:{rgb:'2C3E50'}} });
+
+  const mkCell = (v, s) => hasStyle ? { v, s, t: typeof v === 'number' ? 'n' : 's' } : { v, t: typeof v === 'number' ? 'n' : 's' };
+  const mkNum  = (v, s, fmt='#,##0') => hasStyle ? { v:+v||0, s, t:'n', z:fmt } : { v:+v||0, t:'n', z:fmt };
+
+  // ── Lebar kolom ──
+  const colWidths = keys.map((k, ci) => {
+    const hlen = headers[ci].length;
+    const dlens = data.map(r => {
+      if (isNominal(k)) return fmtRp(r[k]).length;
+      if (isTanggal(k)) return 10;
+      return String(r[k]??'').length;
+    });
+    return { wch: Math.min(Math.max(hlen, ...dlens) + 3, 50) };
+  });
+
+  // ── Build sheet data ──
+  const ws = {};
+  const enc = XS.utils.encode_cell;
+  let row = 0;
+
+  // Baris judul
+  ws[enc({r:row, c:0})] = mkCell(title, stTitle);
+  for (let c=1; c<keys.length; c++) ws[enc({r:row,c})] = mkCell('', stTitle);
+  row++;
+
+  // Baris tanggal cetak
+  ws[enc({r:row, c:0})] = mkCell('Dicetak: ' + dateStr, stSub);
+  for (let c=1; c<keys.length; c++) ws[enc({r:row,c})] = mkCell('', stSub);
+  row++;
+
+  // Baris kosong
+  for (let c=0; c<keys.length; c++) ws[enc({r:row,c})] = mkCell('', {});
+  row++;
+
+  // Header kolom
+  headers.forEach((h, c) => { ws[enc({r:row,c})] = mkCell(h, stHeader); });
+  row++;
+
+  const dataStartRow = row;
+
+  // Data rows
+  data.forEach((rowData, ri) => {
+    const isEven = ri % 2 === 0;
+    keys.forEach((k, c) => {
+      const v = rowData[k] ?? '';
+      if (isNominal(k)) {
+        ws[enc({r:row,c})] = mkNum(v, isEven ? stNumEven : stNumOdd);
+      } else if (isTanggal(k)) {
+        ws[enc({r:row,c})] = mkCell(fmtTgl(v), isEven ? stDataEven : stDataOdd);
+      } else {
+        ws[enc({r:row,c})] = mkCell(String(v), isEven ? stDataEven : stDataOdd);
+      }
+    });
+    row++;
+  });
+
+  // Baris TOTAL
+  keys.forEach((k, c) => {
+    if (c === 0) {
+      ws[enc({r:row,c})] = mkCell('TOTAL (' + data.length + ' data)', stTotal);
+    } else if (isNominal(k)) {
+      ws[enc({r:row,c})] = mkNum(data.reduce((s,r)=>s+(+r[k]||0),0), stTotalNum);
+    } else {
+      ws[enc({r:row,c})] = mkCell('', stTotal);
+    }
+  });
+  row++;
+
+  // Ringkasan metode
+  const me = Object.entries(metodeMap).filter(([,v])=>v>0);
+  if (me.length > 0) {
+    const ord = ['tunai','transfer','qris','cek','lainnya'];
+    me.sort((a,b)=>(ord.indexOf(a[0])<0?99:ord.indexOf(a[0]))-(ord.indexOf(b[0])<0?99:ord.indexOf(b[0])));
+    const grand = me.reduce((s,[,v])=>s+v,0);
+
+    // Kosong
+    for (let c=0;c<keys.length;c++) ws[enc({r:row,c})]=mkCell('',{});
+    row++;
+
+    // Judul ringkasan
+    ws[enc({r:row,c:0})] = mkCell('RINGKASAN METODE PEMBAYARAN', stMHead);
+    for (let c=1;c<keys.length;c++) ws[enc({r:row,c})]=mkCell('',stMHead);
+    row++;
+
+    // Header metode
+    ['Metode','Total','Proporsi'].forEach((h,c)=>{ ws[enc({r:row,c})]=mkCell(h,stMTh); });
+    for (let c=3;c<keys.length;c++) ws[enc({r:row,c})]=mkCell('',stMTh);
+    row++;
+
+    // Data metode
+    me.forEach(([m,v],ri)=>{
+      const pct = grand ? Math.round(v/grand*100) : 0;
+      const se = ri%2===0 ? stMEven : stMOdd;
+      const sn = mkStyle({...se, alignment:{horizontal:'right'}});
+      const sc = mkStyle({...se, alignment:{horizontal:'center'}});
+      ws[enc({r:row,c:0})]=mkCell(m.charAt(0).toUpperCase()+m.slice(1),se);
+      ws[enc({r:row,c:1})]=mkNum(v,sn);
+      ws[enc({r:row,c:2})]=mkCell(pct+'%',sc);
+      for (let c=3;c<keys.length;c++) ws[enc({r:row,c})]=mkCell('',se);
+      row++;
+    });
+
+    // Total metode
+    ws[enc({r:row,c:0})]=mkCell('TOTAL SEMUA',stMTotal);
+    ws[enc({r:row,c:1})]=mkNum(grand,stMTotalNum);
+    ws[enc({r:row,c:2})]=mkCell('100%',mkStyle({...stMTotal,alignment:{horizontal:'center'}}));
+    for (let c=3;c<keys.length;c++) ws[enc({r:row,c})]=mkCell('',stMTotal);
+    row++;
+  }
+
+  // Sheet range, columns, merges, freeze
+  ws['!ref'] = XS.utils.encode_range({s:{r:0,c:0}, e:{r:row-1,c:keys.length-1}});
+  ws['!cols'] = colWidths;
+  ws['!merges'] = [
+    {s:{r:0,c:0}, e:{r:0,c:keys.length-1}},
+    {s:{r:1,c:0}, e:{r:1,c:keys.length-1}},
+  ];
+  ws['!rows'] = [{hpt:24},{hpt:16},{hpt:6},{hpt:20}];
+  ws['!freeze'] = {xSplit:0, ySplit:4};
+
+  const wb = XS.utils.book_new();
+  XS.utils.book_append_sheet(wb, ws, sheetName.substring(0,31));
+  XS.writeFile(wb, name + '_' + new Date().toISOString().split('T')[0] + '.xlsx');
+  toast('File Excel berhasil didownload', 'ok');
+}
 
 function exportExcelWithMetodeSummary(data, name, sheetName='Data', metodeMap={}) {
   if (!data.length) { toast('Tidak ada data','warn'); return; }
