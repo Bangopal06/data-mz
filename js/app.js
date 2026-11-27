@@ -153,235 +153,158 @@ const _LABEL_MAP = {
   jenis:'Jenis', kelas:'Kelas', halaqoh:'Halaqoh', amanah:'Amanah'
 };
 
-// Export ke .xlsx dengan styling penuh menggunakan ExcelJS
-async function exportExcelWithMetodeSummary(data, name, sheetName='Data', metodeMap={}) {
+function exportExcelWithMetodeSummary(data, name, sheetName='Data', metodeMap={}) {
   if (!data.length) { toast('Tidak ada data','warn'); return; }
-  if (typeof ExcelJS === 'undefined') {
-    // fallback ke SheetJS kalau ExcelJS belum load
-    _exportSheetJSFallback(data, name, sheetName, metodeMap);
-    return;
-  }
 
   const isNominal = k => k.includes('nominal') || k === 'total_bulan_ini';
+  const fmtRp     = n => 'Rp\u00A0' + Number(+n||0).toLocaleString('id-ID');
+  const esc       = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const keys      = Object.keys(data[0]);
   const headers   = keys.map(k => _LABEL_MAP[k] || k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
+  const colCount  = keys.length;
   const dateStr   = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
   const title     = 'LAPORAN ' + name.replace(/_/g,' ').toUpperCase();
-  const colCount  = keys.length;
 
-  const wb = new ExcelJS.Workbook();
-  wb.creator = 'Mitra Zakat Al-Iman';
-  const ws = wb.addWorksheet(sheetName.substring(0,31));
-
-  // ── Hitung lebar kolom ──
-  ws.columns = keys.map((k, ci) => {
-    const headerLen = headers[ci].length;
-    const dataLens  = data.map(r => String(r[k] ?? '').length);
-    const max = Math.max(headerLen, ...dataLens);
-    return { width: Math.min(Math.max(max + 2, 10), 45) };
+  // Hitung lebar kolom (dalam karakter ~7px per char)
+  const colWidths = keys.map((k, ci) => {
+    const lens = [headers[ci].length, ...data.map(r => isNominal(k) ? fmtRp(r[k]).length : String(r[k]??'').length)];
+    return Math.min(Math.max(...lens) * 7 + 10, 300);
   });
 
-  // ── Style helper ──
-  const styleTitle = {
-    font:      { name:'Calibri', size:14, bold:true, color:{argb:'FF1A5C2E'} },
-    alignment: { horizontal:'center', vertical:'middle' },
-    fill:      { type:'pattern', pattern:'solid', fgColor:{argb:'FFE8F5E9'} },
-    border:    { bottom:{style:'medium', color:{argb:'FF1A7340'}} }
+  // ── Style definitions ──
+  const S = {
+    title:  'background:#1a7340;color:#ffffff;font-size:14pt;font-weight:bold;text-align:center;vertical-align:middle;padding:10px 14px;border:2px solid #0f4f28',
+    sub:    'background:#e8f5e9;color:#555;font-size:9pt;text-align:center;padding:3px;border-bottom:1px solid #1a7340',
+    th:     'background:#1a7340;color:#ffffff;font-weight:bold;font-size:10pt;text-align:center;vertical-align:middle;padding:7px 10px;border:1px solid #0f4f28;white-space:nowrap',
+    tdEven: 'background:#ffffff;font-size:10pt;padding:5px 8px;border:1px solid #d0e8d8;vertical-align:middle',
+    tdOdd:  'background:#f2f9f5;font-size:10pt;padding:5px 8px;border:1px solid #d0e8d8;vertical-align:middle',
+    tdNum:  'text-align:right;',
+    total:  'background:#2c3e50;color:#ffffff;font-weight:bold;font-size:10pt;padding:7px 10px;border:1px solid #1a252f',
+    totalN: 'background:#2c3e50;color:#ffffff;font-weight:bold;font-size:10pt;padding:7px 10px;border:1px solid #1a252f;text-align:right',
+    mHead:  'background:#1a4f7a;color:#ffffff;font-weight:bold;font-size:11pt;text-align:center;padding:8px;border:1px solid #0d3a5c',
+    mTh:    'background:#1a7340;color:#ffffff;font-weight:bold;font-size:10pt;padding:6px 10px;border:1px solid #0f4f28',
+    mEven:  'background:#f0f7ff;font-size:10pt;padding:5px 10px;border:1px solid #d0d8e8',
+    mOdd:   'background:#e8f4fd;font-size:10pt;padding:5px 10px;border:1px solid #d0d8e8',
+    mTotal: 'background:#2c3e50;color:#ffffff;font-weight:bold;font-size:10pt;padding:6px 10px;border:1px solid #1a252f',
+    mTotalN:'background:#2c3e50;color:#ffffff;font-weight:bold;font-size:10pt;padding:6px 10px;border:1px solid #1a252f;text-align:right',
   };
-  const styleSub = {
-    font:      { name:'Calibri', size:10, italic:true, color:{argb:'FF666666'} },
-    alignment: { horizontal:'center' }
-  };
-  const styleHeader = {
-    font:      { name:'Calibri', size:11, bold:true, color:{argb:'FFFFFFFF'} },
-    alignment: { horizontal:'center', vertical:'middle', wrapText:true },
-    fill:      { type:'pattern', pattern:'solid', fgColor:{argb:'FF1A7340'} },
-    border:    {
-      top:    {style:'thin', color:{argb:'FFFFFFFF'}},
-      bottom: {style:'thin', color:{argb:'FFFFFFFF'}},
-      left:   {style:'thin', color:{argb:'FFFFFFFF'}},
-      right:  {style:'thin', color:{argb:'FFFFFFFF'}}
-    }
-  };
-  const styleDataEven = {
-    font:      { name:'Calibri', size:10 },
-    fill:      { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFFFFF'} },
-    border:    { bottom:{style:'hair', color:{argb:'FFD0E8D8'}}, right:{style:'hair', color:{argb:'FFD0E8D8'}} },
-    alignment: { vertical:'middle' }
-  };
-  const styleDataOdd = {
-    font:      { name:'Calibri', size:10 },
-    fill:      { type:'pattern', pattern:'solid', fgColor:{argb:'FFF2F9F5'} },
-    border:    { bottom:{style:'hair', color:{argb:'FFD0E8D8'}}, right:{style:'hair', color:{argb:'FFD0E8D8'}} },
-    alignment: { vertical:'middle' }
-  };
-  const styleTotal = {
-    font:      { name:'Calibri', size:10, bold:true, color:{argb:'FFFFFFFF'} },
-    fill:      { type:'pattern', pattern:'solid', fgColor:{argb:'FF2C3E50'} },
-    alignment: { vertical:'middle' },
-    border:    { top:{style:'medium', color:{argb:'FFFFFFFF'}} }
-  };
-  const styleNominal = (base) => ({ ...base,
-    alignment: { ...base.alignment, horizontal:'right' },
-    numFmt: '#,##0'
-  });
 
-  const applyStyle = (cell, style) => Object.assign(cell, style);
+  // ── Kolom width style ──
+  const colStyles = colWidths.map(w => `<col style="width:${w}px">`).join('');
 
-  // ── Baris 1: Judul ──
-  const rTitle = ws.addRow([title]);
-  rTitle.height = 28;
-  ws.mergeCells(rTitle.number, 1, rTitle.number, colCount);
-  rTitle.getCell(1).style = styleTitle;
-
-  // ── Baris 2: Tanggal cetak ──
-  const rPrint = ws.addRow(['Dicetak: ' + dateStr]);
-  rPrint.height = 16;
-  ws.mergeCells(rPrint.number, 1, rPrint.number, colCount);
-  rPrint.getCell(1).style = styleSub;
-
-  // ── Baris 3: Kosong ──
-  ws.addRow([]);
-
-  // ── Baris 4: Header kolom ──
-  const rHeader = ws.addRow(headers);
-  rHeader.height = 20;
-  rHeader.eachCell(cell => { cell.style = styleHeader; });
-
-  // Freeze baris header ke bawah
-  ws.views = [{ state:'frozen', xSplit:0, ySplit:4, activeCell:'A5' }];
+  // ── Header row ──
+  const headerRow = '<tr>' + headers.map(h => `<td style="${S.th}">${esc(h)}</td>`).join('') + '</tr>';
 
   // ── Data rows ──
-  data.forEach((row, ri) => {
-    const vals = keys.map(k => {
+  const dataRows = data.map((row, ri) => {
+    const base = ri % 2 === 0 ? S.tdEven : S.tdOdd;
+    return '<tr>' + keys.map(k => {
       const v = row[k] ?? '';
-      return isNominal(k) ? (+v || 0) : String(v);
-    });
-    const r = ws.addRow(vals);
-    r.height = 16;
-    const baseStyle = ri % 2 === 0 ? styleDataEven : styleDataOdd;
-    keys.forEach((k, ci) => {
-      const cell = r.getCell(ci + 1);
-      if (isNominal(k)) {
-        cell.style = styleNominal(baseStyle);
-        cell.numFmt = '#,##0';
-      } else {
-        cell.style = { ...baseStyle };
-      }
-    });
-  });
+      if (isNominal(k)) return `<td style="${base}${S.tdNum}">${fmtRp(v)}</td>`;
+      return `<td style="${base}">${esc(v)}</td>`;
+    }).join('') + '</tr>';
+  }).join('');
 
-  // ── Baris TOTAL ──
-  const totalVals = keys.map((k, i) => {
-    if (i === 0) return 'TOTAL (' + data.length + ' data)';
-    return isNominal(k) ? data.reduce((s,r) => s + (+r[k]||0), 0) : '';
-  });
-  const rTotal = ws.addRow(totalVals);
-  rTotal.height = 18;
-  keys.forEach((k, ci) => {
-    const cell = rTotal.getCell(ci + 1);
+  // ── Total row ──
+  const totalRow = '<tr>' + keys.map((k, i) => {
+    if (i === 0) return `<td style="${S.total}">TOTAL (${data.length} data)</td>`;
     if (isNominal(k)) {
-      cell.style = { ...styleTotal, alignment:{horizontal:'right',vertical:'middle'}, numFmt:'#,##0' };
-      cell.numFmt = '#,##0';
-    } else {
-      cell.style = styleTotal;
+      const sum = data.reduce((s,r) => s+(+r[k]||0), 0);
+      return `<td style="${S.totalN}">${fmtRp(sum)}</td>`;
     }
-  });
+    return `<td style="${S.total}"></td>`;
+  }).join('') + '</tr>';
 
-  // ── Ringkasan Metode Pembayaran ──
+  // ── Ringkasan metode ──
+  let metodeSection = '';
   const metodeEntries = Object.entries(metodeMap).filter(([,v]) => v > 0);
   if (metodeEntries.length > 0) {
-    const metodeOrder = ['tunai','transfer','qris','cek','lainnya'];
-    metodeEntries.sort((a,b) => {
-      const ia = metodeOrder.indexOf(a[0]), ib = metodeOrder.indexOf(b[0]);
-      return (ia<0?99:ia)-(ib<0?99:ib);
-    });
-    const grandMetode = metodeEntries.reduce((s,[,v]) => s+v, 0);
+    const ord = ['tunai','transfer','qris','cek','lainnya'];
+    metodeEntries.sort((a,b) => (ord.indexOf(a[0])<0?99:ord.indexOf(a[0])) - (ord.indexOf(b[0])<0?99:ord.indexOf(b[0])));
+    const grand = metodeEntries.reduce((s,[,v]) => s+v, 0);
+    const icon  = {tunai:'💵',transfer:'🏦',qris:'📱',cek:'📄',lainnya:'💳'};
 
-    ws.addRow([]);
+    const mRows = metodeEntries.map(([m,v], ri) => {
+      const pct = grand ? Math.round(v/grand*100) : 0;
+      const bg  = ri%2===0 ? S.mEven : S.mOdd;
+      return `<tr>
+        <td style="${bg}">${icon[m]||'💳'} ${m.charAt(0).toUpperCase()+m.slice(1)}</td>
+        <td style="${bg}text-align:right">${fmtRp(v)}</td>
+        <td style="${bg}text-align:center">${pct}%</td>
+      </tr>`;
+    }).join('');
 
-    // Judul ringkasan
-    const rMTitle = ws.addRow(['RINGKASAN METODE PEMBAYARAN']);
-    ws.mergeCells(rMTitle.number, 1, rMTitle.number, colCount);
-    rMTitle.getCell(1).style = {
-      font:  { name:'Calibri', size:11, bold:true, color:{argb:'FFFFFFFF'} },
-      fill:  { type:'pattern', pattern:'solid', fgColor:{argb:'FF1A4F7A'} },
-      alignment: { horizontal:'center', vertical:'middle' }
-    };
-    rMTitle.height = 18;
-
-    // Header ringkasan
-    const rMHead = ws.addRow(['Metode', 'Total', 'Proporsi']);
-    ['Metode','Total','Proporsi'].forEach((_,ci) => {
-      rMHead.getCell(ci+1).style = styleHeader;
-    });
-    rMHead.height = 18;
-
-    // Data metode
-    metodeEntries.forEach(([m, v], ri) => {
-      const pct = grandMetode ? Math.round(v/grandMetode*100) : 0;
-      const r = ws.addRow([m.charAt(0).toUpperCase()+m.slice(1), v, pct + '%']);
-      r.height = 16;
-      const bg = ri%2===0 ? 'FFF0F7FF' : 'FFE8F4FD';
-      [0,1,2].forEach(ci => {
-        const cell = r.getCell(ci+1);
-        cell.style = {
-          font: {name:'Calibri', size:10, bold: ci===1},
-          fill: {type:'pattern', pattern:'solid', fgColor:{argb:bg}},
-          alignment: {horizontal: ci===1?'right':ci===2?'center':'left', vertical:'middle'},
-          border: {bottom:{style:'hair', color:{argb:'FFD0D8E8'}}}
-        };
-        if (ci === 1) { cell.numFmt = '#,##0'; }
-      });
-    });
-
-    // Total metode
-    const rMTotal = ws.addRow(['TOTAL SEMUA', grandMetode, '100%']);
-    rMTotal.height = 18;
-    [0,1,2].forEach(ci => {
-      const cell = rMTotal.getCell(ci+1);
-      cell.style = {
-        font: {name:'Calibri', size:10, bold:true, color:{argb:'FFFFFFFF'}},
-        fill: {type:'pattern', pattern:'solid', fgColor:{argb:'FF2C3E50'}},
-        alignment: {horizontal: ci===1?'right':ci===2?'center':'left', vertical:'middle'}
-      };
-      if (ci === 1) { cell.numFmt = '#,##0'; }
-    });
+    metodeSection = `
+      <tr><td colspan="${colCount}" style="padding:6px;border:none;background:#fff"></td></tr>
+      <tr><td colspan="${colCount}" style="${S.mHead}">📊 Ringkasan Metode Pembayaran</td></tr>
+      <tr>
+        <td style="${S.mTh}">Metode</td>
+        <td style="${S.mTh}text-align:right">Total</td>
+        <td style="${S.mTh}text-align:center">Proporsi</td>
+        ${keys.slice(3).map(()=>`<td style="${S.mTh}"></td>`).join('')}
+      </tr>
+      ${mRows}
+      <tr>
+        <td style="${S.mTotal}">TOTAL SEMUA</td>
+        <td style="${S.mTotalN}">${fmtRp(grand)}</td>
+        <td style="${S.mTotal}text-align:center">100%</td>
+        ${keys.slice(3).map(()=>`<td style="${S.mTotal}"></td>`).join('')}
+      </tr>`;
   }
 
-  // ── Download ──
-  const buf = await wb.xlsx.writeBuffer();
-  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  // ── Rakit HTML ──
+  const html = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:o="urn:schemas-microsoft-com:office:office">
+<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+  <Title>${esc(title)}</Title>
+</DocumentProperties>
+<Styles>
+  <Style ss:ID="Default"><Alignment ss:WrapText="1"/><Font ss:FontName="Calibri" ss:Size="10"/></Style>
+</Styles>
+</Workbook>`;
+
+  // Pakai format HTML table biasa yang lebih kompatibel
+  const htmlTable = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8">
+<!--[if gte mso 9]><xml>
+<x:ExcelWorkbook><x:ExcelWorksheets>
+<x:ExcelWorksheet><x:Name>${esc(sheetName)}</x:Name>
+<x:WorksheetOptions><x:Selected/><x:FreezePanes/>
+<x:FrozenNoSplit/><x:SplitHorizontal>4</x:SplitHorizontal>
+<x:TopRowBottomPane>4</x:TopRowBottomPane>
+</x:WorksheetOptions></x:ExcelWorksheet>
+</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+<style>
+  body { font-family: Calibri, Arial, sans-serif; }
+  table { border-collapse: collapse; }
+</style>
+</head>
+<body>
+<table>
+  <colgroup>${colStyles}</colgroup>
+  <tr><td colspan="${colCount}" style="${S.title}">${esc(title)}</td></tr>
+  <tr><td colspan="${colCount}" style="${S.sub}">Dicetak: ${esc(dateStr)}</td></tr>
+  <tr><td colspan="${colCount}" style="padding:2px;background:#fff;border:none"></td></tr>
+  ${headerRow}
+  ${dataRows}
+  ${totalRow}
+  ${metodeSection}
+</table>
+</body></html>`;
+
+  const blob = new Blob(['\uFEFF' + htmlTable], { type: 'application/vnd.ms-excel;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = name + '_' + new Date().toISOString().split('T')[0] + '.xlsx';
+  a.download = name + '_' + new Date().toISOString().split('T')[0] + '.xls';
   a.click();
   URL.revokeObjectURL(a.href);
   toast('File Excel berhasil didownload', 'ok');
-}
-
-// Fallback SheetJS kalau ExcelJS tidak tersedia
-function _exportSheetJSFallback(data, name, sheetName, metodeMap) {
-  if (typeof XLSX === 'undefined') { toast('Library Excel tidak tersedia','err'); return; }
-  const isNominal = k => k.includes('nominal') || k === 'total_bulan_ini';
-  const keys    = Object.keys(data[0]);
-  const headers = keys.map(k => _LABEL_MAP[k] || k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
-  const aoa = [
-    ['LAPORAN ' + name.replace(/_/g,' ').toUpperCase()],
-    ['Dicetak: ' + new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})],
-    [],
-    headers,
-    ...data.map(row => keys.map(k => isNominal(k) ? (+row[k]||0) : String(row[k]??''))),
-    keys.map((k,i) => i===0 ? 'TOTAL' : isNominal(k) ? data.reduce((s,r)=>s+(+r[k]||0),0) : '')
-  ];
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = keys.map((k,ci) => ({
-    wch: Math.min(Math.max(Math.max(headers[ci].length, ...data.map(r=>String(r[k]??'').length)) + 2, 10), 45)
-  }));
-  ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:keys.length-1}},{s:{r:1,c:0},e:{r:1,c:keys.length-1}}];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, sheetName.substring(0,31));
-  XLSX.writeFile(wb, name + '_' + new Date().toISOString().split('T')[0] + '.xlsx');
 }
 
 // ---- BUILD TEMPLATE EXCEL ----
