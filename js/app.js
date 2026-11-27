@@ -155,155 +155,140 @@ const _LABEL_MAP = {
 
 function exportExcelWithMetodeSummary(data, name, sheetName='Data', metodeMap={}) {
   if (!data.length) { toast('Tidak ada data','warn'); return; }
+  if (typeof XLSX === 'undefined') { toast('Library Excel belum siap','warn'); return; }
 
   const isNominal = k => k.includes('nominal') || k === 'total_bulan_ini';
-  const fmtRp     = n => 'Rp\u00A0' + Number(+n||0).toLocaleString('id-ID');
-  const esc       = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const keys      = Object.keys(data[0]);
-  const headers   = keys.map(k => _LABEL_MAP[k] || k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
-  const colCount  = keys.length;
-  const dateStr   = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
-  const title     = 'LAPORAN ' + name.replace(/_/g,' ').toUpperCase();
+  // Kolom tanggal — simpan sebagai teks agar tidak jadi serial number
+  const isTanggal = k => k.startsWith('tgl') || k === 'tanggal';
+  const fmtTgl    = v => {
+    if (!v) return '-';
+    // Format YYYY-MM-DD → DD/MM/YYYY
+    const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : String(v);
+  };
+  const fmtRp = n => 'Rp ' + Number(+n||0).toLocaleString('id-ID');
 
-  // Hitung lebar kolom (dalam karakter ~7px per char)
+  const keys    = Object.keys(data[0]);
+  const headers = keys.map(k => _LABEL_MAP[k] || k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
+  const dateStr = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+  const title   = 'LAPORAN ' + name.replace(/_/g,' ').toUpperCase();
+
+  // ── Hitung lebar kolom (wch = karakter) ──
   const colWidths = keys.map((k, ci) => {
-    const lens = [headers[ci].length, ...data.map(r => isNominal(k) ? fmtRp(r[k]).length : String(r[k]??'').length)];
-    return Math.min(Math.max(...lens) * 7 + 10, 300);
+    const headerLen = headers[ci].length;
+    const dataLens  = data.map(r => {
+      if (isNominal(k)) return fmtRp(r[k]).length;
+      if (isTanggal(k)) return 10; // DD/MM/YYYY
+      return String(r[k]??'').length;
+    });
+    return { wch: Math.min(Math.max(headerLen, ...dataLens) + 3, 50) };
   });
 
-  // ── Style definitions ──
-  const S = {
-    title:  'background:#1a7340;color:#ffffff;font-size:14pt;font-weight:bold;text-align:center;vertical-align:middle;padding:10px 14px;border:2px solid #0f4f28',
-    sub:    'background:#e8f5e9;color:#555;font-size:9pt;text-align:center;padding:3px;border-bottom:1px solid #1a7340',
-    th:     'background:#1a7340;color:#ffffff;font-weight:bold;font-size:10pt;text-align:center;vertical-align:middle;padding:7px 10px;border:1px solid #0f4f28;white-space:nowrap',
-    tdEven: 'background:#ffffff;font-size:10pt;padding:5px 8px;border:1px solid #d0e8d8;vertical-align:middle',
-    tdOdd:  'background:#f2f9f5;font-size:10pt;padding:5px 8px;border:1px solid #d0e8d8;vertical-align:middle',
-    tdNum:  'text-align:right;',
-    total:  'background:#2c3e50;color:#ffffff;font-weight:bold;font-size:10pt;padding:7px 10px;border:1px solid #1a252f',
-    totalN: 'background:#2c3e50;color:#ffffff;font-weight:bold;font-size:10pt;padding:7px 10px;border:1px solid #1a252f;text-align:right',
-    mHead:  'background:#1a4f7a;color:#ffffff;font-weight:bold;font-size:11pt;text-align:center;padding:8px;border:1px solid #0d3a5c',
-    mTh:    'background:#1a7340;color:#ffffff;font-weight:bold;font-size:10pt;padding:6px 10px;border:1px solid #0f4f28',
-    mEven:  'background:#f0f7ff;font-size:10pt;padding:5px 10px;border:1px solid #d0d8e8',
-    mOdd:   'background:#e8f4fd;font-size:10pt;padding:5px 10px;border:1px solid #d0d8e8',
-    mTotal: 'background:#2c3e50;color:#ffffff;font-weight:bold;font-size:10pt;padding:6px 10px;border:1px solid #1a252f',
-    mTotalN:'background:#2c3e50;color:#ffffff;font-weight:bold;font-size:10pt;padding:6px 10px;border:1px solid #1a252f;text-align:right',
-  };
+  // ── Susun AOA ──
+  const aoa = [];
+  // Baris 1: judul
+  aoa.push([title, ...Array(keys.length-1).fill('')]);
+  // Baris 2: tanggal cetak
+  aoa.push(['Dicetak: ' + dateStr, ...Array(keys.length-1).fill('')]);
+  // Baris 3: kosong
+  aoa.push([]);
+  // Baris 4: header
+  aoa.push([...headers]);
 
-  // ── Kolom width style ──
-  const colStyles = colWidths.map(w => `<col style="width:${w}px">`).join('');
-
-  // ── Header row ──
-  const headerRow = '<tr>' + headers.map(h => `<td style="${S.th}">${esc(h)}</td>`).join('') + '</tr>';
-
-  // ── Data rows ──
-  const dataRows = data.map((row, ri) => {
-    const base = ri % 2 === 0 ? S.tdEven : S.tdOdd;
-    return '<tr>' + keys.map(k => {
+  // Data — tanggal sebagai teks prefixed dengan tab agar Excel tidak convert
+  data.forEach(row => {
+    aoa.push(keys.map(k => {
       const v = row[k] ?? '';
-      if (isNominal(k)) return `<td style="${base}${S.tdNum}">${fmtRp(v)}</td>`;
-      return `<td style="${base}">${esc(v)}</td>`;
-    }).join('') + '</tr>';
-  }).join('');
+      if (isNominal(k)) return +v || 0;
+      if (isTanggal(k)) return fmtTgl(v); // string DD/MM/YYYY
+      return String(v);
+    }));
+  });
 
-  // ── Total row ──
-  const totalRow = '<tr>' + keys.map((k, i) => {
-    if (i === 0) return `<td style="${S.total}">TOTAL (${data.length} data)</td>`;
-    if (isNominal(k)) {
-      const sum = data.reduce((s,r) => s+(+r[k]||0), 0);
-      return `<td style="${S.totalN}">${fmtRp(sum)}</td>`;
-    }
-    return `<td style="${S.total}"></td>`;
-  }).join('') + '</tr>';
+  // Baris TOTAL
+  const totalVals = keys.map((k, i) => {
+    if (i === 0) return 'TOTAL (' + data.length + ' data)';
+    if (isNominal(k)) return data.reduce((s,r) => s+(+r[k]||0), 0);
+    return '';
+  });
+  aoa.push(totalVals);
+
+  // ── Buat worksheet ──
+  const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: false });
+  ws['!cols'] = colWidths;
+
+  // Merge judul dan tanggal cetak
+  ws['!merges'] = [
+    { s:{r:0,c:0}, e:{r:0,c:keys.length-1} },
+    { s:{r:1,c:0}, e:{r:1,c:keys.length-1} },
+  ];
+
+  // Freeze 4 baris atas
+  ws['!freeze'] = { xSplit: 0, ySplit: 4 };
+
+  // Format sel nominal sebagai angka dengan format #,##0
+  const dataStartRow = 4;
+  for (let ri = dataStartRow; ri < dataStartRow + data.length + 1; ri++) {
+    keys.forEach((k, ci) => {
+      if (!isNominal(k)) return;
+      const ref = XLSX.utils.encode_cell({r: ri, c: ci});
+      if (ws[ref]) { ws[ref].t = 'n'; ws[ref].z = '#,##0'; }
+    });
+  }
+
+  // Pastikan kolom tanggal tidak diinterpretasi sebagai date oleh Excel
+  // Sudah aman karena format DD/MM/YYYY sebagai string
 
   // ── Ringkasan metode ──
-  let metodeSection = '';
   const metodeEntries = Object.entries(metodeMap).filter(([,v]) => v > 0);
   if (metodeEntries.length > 0) {
     const ord = ['tunai','transfer','qris','cek','lainnya'];
-    metodeEntries.sort((a,b) => (ord.indexOf(a[0])<0?99:ord.indexOf(a[0])) - (ord.indexOf(b[0])<0?99:ord.indexOf(b[0])));
-    const grand = metodeEntries.reduce((s,[,v]) => s+v, 0);
-    const icon  = {tunai:'💵',transfer:'🏦',qris:'📱',cek:'📄',lainnya:'💳'};
-
-    const mRows = metodeEntries.map(([m,v], ri) => {
+    metodeEntries.sort((a,b)=>(ord.indexOf(a[0])<0?99:ord.indexOf(a[0]))-(ord.indexOf(b[0])<0?99:ord.indexOf(b[0])));
+    const grand = metodeEntries.reduce((s,[,v])=>s+v,0);
+    // Baris kosong
+    aoa.push([]);
+    aoa.push(['RINGKASAN METODE PEMBAYARAN', ...Array(keys.length-1).fill('')]);
+    aoa.push(['Metode', 'Total', 'Proporsi', ...Array(keys.length-3).fill('')]);
+    metodeEntries.forEach(([m,v]) => {
       const pct = grand ? Math.round(v/grand*100) : 0;
-      const bg  = ri%2===0 ? S.mEven : S.mOdd;
-      return `<tr>
-        <td style="${bg}">${icon[m]||'💳'} ${m.charAt(0).toUpperCase()+m.slice(1)}</td>
-        <td style="${bg}text-align:right">${fmtRp(v)}</td>
-        <td style="${bg}text-align:center">${pct}%</td>
-      </tr>`;
-    }).join('');
+      aoa.push([m.charAt(0).toUpperCase()+m.slice(1), v, pct+'%', ...Array(keys.length-3).fill('')]);
+    });
+    aoa.push(['TOTAL SEMUA', grand, '100%', ...Array(keys.length-3).fill('')]);
 
-    metodeSection = `
-      <tr><td colspan="${colCount}" style="padding:6px;border:none;background:#fff"></td></tr>
-      <tr><td colspan="${colCount}" style="${S.mHead}">📊 Ringkasan Metode Pembayaran</td></tr>
-      <tr>
-        <td style="${S.mTh}">Metode</td>
-        <td style="${S.mTh}text-align:right">Total</td>
-        <td style="${S.mTh}text-align:center">Proporsi</td>
-        ${keys.slice(3).map(()=>`<td style="${S.mTh}"></td>`).join('')}
-      </tr>
-      ${mRows}
-      <tr>
-        <td style="${S.mTotal}">TOTAL SEMUA</td>
-        <td style="${S.mTotalN}">${fmtRp(grand)}</td>
-        <td style="${S.mTotal}text-align:center">100%</td>
-        ${keys.slice(3).map(()=>`<td style="${S.mTotal}"></td>`).join('')}
-      </tr>`;
+    // Re-generate worksheet dengan data lengkap termasuk metode
+    const ws2 = XLSX.utils.aoa_to_sheet(aoa, { cellDates: false });
+    ws2['!cols'] = colWidths;
+    ws2['!merges'] = [
+      { s:{r:0,c:0}, e:{r:0,c:keys.length-1} },
+      { s:{r:1,c:0}, e:{r:1,c:keys.length-1} },
+    ];
+    // Format nominal di data
+    for (let ri = dataStartRow; ri < dataStartRow + data.length + 1; ri++) {
+      keys.forEach((k, ci) => {
+        if (!isNominal(k)) return;
+        const ref = XLSX.utils.encode_cell({r: ri, c: ci});
+        if (ws2[ref]) { ws2[ref].t = 'n'; ws2[ref].z = '#,##0'; }
+      });
+    }
+    // Format nominal di ringkasan metode
+    const mStart = dataStartRow + data.length + 3; // kosong+judul+header
+    metodeEntries.forEach((_, i) => {
+      const ref = XLSX.utils.encode_cell({r: mStart+i, c: 1});
+      if (ws2[ref]) { ws2[ref].t = 'n'; ws2[ref].z = '#,##0'; }
+    });
+    const refTotal = XLSX.utils.encode_cell({r: mStart+metodeEntries.length, c: 1});
+    if (ws2[refTotal]) { ws2[refTotal].t = 'n'; ws2[refTotal].z = '#,##0'; }
+
+    const wb2 = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb2, ws2, sheetName.substring(0,31));
+    XLSX.writeFile(wb2, name + '_' + new Date().toISOString().split('T')[0] + '.xlsx');
+    toast('File Excel berhasil didownload', 'ok');
+    return;
   }
 
-  // ── Rakit HTML ──
-  const html = `<?xml version="1.0" encoding="UTF-8"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:x="urn:schemas-microsoft-com:office:excel"
- xmlns:o="urn:schemas-microsoft-com:office:office">
-<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
-  <Title>${esc(title)}</Title>
-</DocumentProperties>
-<Styles>
-  <Style ss:ID="Default"><Alignment ss:WrapText="1"/><Font ss:FontName="Calibri" ss:Size="10"/></Style>
-</Styles>
-</Workbook>`;
-
-  // Pakai format HTML table biasa yang lebih kompatibel
-  const htmlTable = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
- xmlns:x="urn:schemas-microsoft-com:office:excel"
- xmlns="http://www.w3.org/TR/REC-html40">
-<head><meta charset="UTF-8">
-<!--[if gte mso 9]><xml>
-<x:ExcelWorkbook><x:ExcelWorksheets>
-<x:ExcelWorksheet><x:Name>${esc(sheetName)}</x:Name>
-<x:WorksheetOptions><x:Selected/><x:FreezePanes/>
-<x:FrozenNoSplit/><x:SplitHorizontal>4</x:SplitHorizontal>
-<x:TopRowBottomPane>4</x:TopRowBottomPane>
-</x:WorksheetOptions></x:ExcelWorksheet>
-</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
-<style>
-  body { font-family: Calibri, Arial, sans-serif; }
-  table { border-collapse: collapse; }
-</style>
-</head>
-<body>
-<table>
-  <colgroup>${colStyles}</colgroup>
-  <tr><td colspan="${colCount}" style="${S.title}">${esc(title)}</td></tr>
-  <tr><td colspan="${colCount}" style="${S.sub}">Dicetak: ${esc(dateStr)}</td></tr>
-  <tr><td colspan="${colCount}" style="padding:2px;background:#fff;border:none"></td></tr>
-  ${headerRow}
-  ${dataRows}
-  ${totalRow}
-  ${metodeSection}
-</table>
-</body></html>`;
-
-  const blob = new Blob(['\uFEFF' + htmlTable], { type: 'application/vnd.ms-excel;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = name + '_' + new Date().toISOString().split('T')[0] + '.xls';
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName.substring(0,31));
+  XLSX.writeFile(wb, name + '_' + new Date().toISOString().split('T')[0] + '.xlsx');
   toast('File Excel berhasil didownload', 'ok');
 }
 
