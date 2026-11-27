@@ -153,96 +153,122 @@ const _LABEL_MAP = {
   jenis:'Jenis', kelas:'Kelas', halaqoh:'Halaqoh', amanah:'Amanah'
 };
 
-// Export ke .xlsx murni menggunakan SheetJS
+// Export ke .xlsx menggunakan SheetJS dengan tampilan rapi
 function exportExcelWithMetodeSummary(data, name, sheetName='Data', metodeMap={}) {
   if (!data.length) { toast('Tidak ada data','warn'); return; }
   if (typeof XLSX === 'undefined') { toast('Library Excel belum siap, coba lagi','warn'); return; }
 
   const isNominal = k => k.includes('nominal') || k === 'total_bulan_ini';
-  const fmtRp = n => 'Rp ' + Number(n).toLocaleString('id-ID');
-  const keys = Object.keys(data[0]);
+  const fmtRp = n => {
+    const num = +n || 0;
+    return 'Rp ' + num.toLocaleString('id-ID');
+  };
+  const keys    = Object.keys(data[0]);
   const headers = keys.map(k => _LABEL_MAP[k] || k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
   const dateStr = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+  const title   = 'LAPORAN ' + name.replace(/_/g,' ').toUpperCase();
 
-  // Buat array of arrays untuk sheet
+  // ── Hitung lebar kolom dari konten terpanjang ──
+  const colWidths = keys.map((k, ci) => {
+    const headerLen = headers[ci].length;
+    const dataLens  = data.map(r => {
+      const v = r[k] ?? '';
+      return isNominal(k) ? fmtRp(v).length : String(v).length;
+    });
+    const maxLen = Math.max(headerLen, ...dataLens);
+    return { wch: Math.min(Math.max(maxLen + 2, 12), 50) };
+  });
+
+  // ── Susun AOA (array of arrays) ──
   const aoa = [];
+  const R = {}; // simpan index baris penting
 
-  // Baris judul
-  aoa.push(['LAPORAN ' + name.replace(/_/g,' ').toUpperCase()]);
-  aoa.push(['Dicetak: ' + dateStr]);
+  R.title   = aoa.push([title]) - 1;
+  R.printed = aoa.push(['Dicetak: ' + dateStr]) - 1;
   aoa.push([]); // kosong
+  R.header  = aoa.push(headers) - 1;
+  R.dataStart = aoa.length;
 
-  // Header kolom
-  aoa.push(headers);
-
-  // Data rows
+  // Data — nominal sebagai angka murni agar bisa SUM di Excel
   data.forEach(row => {
     aoa.push(keys.map(k => {
       const v = row[k] ?? '';
-      if (isNominal(k)) return +v || 0;
-      return v;
+      return isNominal(k) ? (+v || 0) : String(v === null || v === undefined ? '' : v);
     }));
   });
 
-  // Baris TOTAL
-  const totalRow = keys.map((k, i) => {
-    if (i === 0) return 'TOTAL';
-    if (isNominal(k)) return data.reduce((s,r) => s + (+r[k]||0), 0);
-    return '';
-  });
-  aoa.push(totalRow);
+  R.dataEnd = aoa.length - 1;
 
-  // Ringkasan metode (hanya kalau ada isinya)
+  // Baris TOTAL
+  R.total = aoa.push(
+    keys.map((k, i) => {
+      if (i === 0) return 'TOTAL (' + data.length + ' baris)';
+      return isNominal(k) ? data.reduce((s,r) => s + (+r[k]||0), 0) : '';
+    })
+  ) - 1;
+
+  // Ringkasan metode
   const metodeEntries = Object.entries(metodeMap).filter(([,v]) => v > 0);
+  let R_metodeStart = -1, R_metodeEnd = -1;
   if (metodeEntries.length > 0) {
     const metodeOrder = ['tunai','transfer','qris','cek','lainnya'];
     metodeEntries.sort((a,b) => {
-      const ia = metodeOrder.indexOf(a[0]); const ib = metodeOrder.indexOf(b[0]);
-      return (ia<0?99:ia)-(ib<0?99:ib);
+      const ia = metodeOrder.indexOf(a[0]), ib = metodeOrder.indexOf(b[0]);
+      return (ia<0?99:ia) - (ib<0?99:ib);
     });
     const grandMetode = metodeEntries.reduce((s,[,v]) => s+v, 0);
-
-    aoa.push([]); // kosong
-    aoa.push(['RINGKASAN METODE PEMBAYARAN']);
+    aoa.push([]);
+    aoa.push(['RINGKASAN METODE PEMBAYARAN', '', '']);
     aoa.push(['Metode', 'Total', 'Proporsi']);
+    R_metodeStart = aoa.length - 1;
     metodeEntries.forEach(([m, v]) => {
       const pct = grandMetode ? Math.round(v/grandMetode*100) : 0;
       aoa.push([m.charAt(0).toUpperCase()+m.slice(1), v, pct + '%']);
     });
-    aoa.push(['TOTAL SEMUA', grandMetode, '100%']);
+    R_metodeEnd = aoa.push(['TOTAL SEMUA', grandMetode, '100%']) - 1;
   }
 
-  // Buat worksheet
+  // ── Buat worksheet ──
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-
-  // Set lebar kolom otomatis
-  const colWidths = keys.map((k, ci) => {
-    const max = Math.max(
-      (headers[ci]||'').length,
-      ...data.map(r => String(r[k]??'').length)
-    );
-    return { wch: Math.min(Math.max(max + 2, 10), 40) };
-  });
   ws['!cols'] = colWidths;
 
-  // Format sel nominal sebagai angka (agar bisa dijumlah di Excel)
-  const startRow = 4; // 0-indexed: judul(0), cetak(1), kosong(2), header(3), data mulai(4)
-  data.forEach((row, ri) => {
+  // Merge baris judul & cetak sepanjang kolom
+  const lastCol = keys.length - 1;
+  ws['!merges'] = [
+    { s:{r:R.title,  c:0}, e:{r:R.title,  c:lastCol} },
+    { s:{r:R.printed,c:0}, e:{r:R.printed,c:lastCol} },
+  ];
+  if (R_metodeStart > 0) {
+    ws['!merges'].push({ s:{r:R_metodeStart-2,c:0}, e:{r:R_metodeStart-2,c:lastCol} });
+  }
+
+  // Format angka nominal: '#,##0' (tanpa Rp agar bisa dihitung, tapi angkanya rapi)
+  for (let ri = R.dataStart; ri <= R.total; ri++) {
     keys.forEach((k, ci) => {
-      if (isNominal(k)) {
-        const cellRef = XLSX.utils.encode_cell({ r: startRow + ri, c: ci });
-        if (ws[cellRef]) {
-          ws[cellRef].t = 'n';
-          ws[cellRef].z = '#,##0';
-        }
+      if (!isNominal(k)) return;
+      const ref = XLSX.utils.encode_cell({r: ri, c: ci});
+      if (ws[ref] && ws[ref].t === 'n') {
+        ws[ref].z = '#,##0';
       }
     });
-  });
+  }
+  // Format nominal di ringkasan metode
+  if (R_metodeStart > 0) {
+    for (let ri = R_metodeStart; ri <= R_metodeEnd; ri++) {
+      const ref = XLSX.utils.encode_cell({r: ri, c: 1});
+      if (ws[ref] && ws[ref].t === 'n') ws[ref].z = '#,##0';
+    }
+  }
 
-  // Buat workbook dan download
+  // Row height hint untuk baris judul
+  ws['!rows'] = [];
+  ws['!rows'][R.title]  = { hpt: 22 };
+  ws['!rows'][R.header] = { hpt: 18 };
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, sheetName.substring(0, 31));
   XLSX.writeFile(wb, name + '_' + new Date().toISOString().split('T')[0] + '.xlsx');
+  toast('File Excel berhasil didownload', 'ok');
 }
 
 // ---- BUILD TEMPLATE EXCEL ----
