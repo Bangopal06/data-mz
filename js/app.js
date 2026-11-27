@@ -153,122 +153,235 @@ const _LABEL_MAP = {
   jenis:'Jenis', kelas:'Kelas', halaqoh:'Halaqoh', amanah:'Amanah'
 };
 
-// Export ke .xlsx menggunakan SheetJS dengan tampilan rapi
-function exportExcelWithMetodeSummary(data, name, sheetName='Data', metodeMap={}) {
+// Export ke .xlsx dengan styling penuh menggunakan ExcelJS
+async function exportExcelWithMetodeSummary(data, name, sheetName='Data', metodeMap={}) {
   if (!data.length) { toast('Tidak ada data','warn'); return; }
-  if (typeof XLSX === 'undefined') { toast('Library Excel belum siap, coba lagi','warn'); return; }
+  if (typeof ExcelJS === 'undefined') {
+    // fallback ke SheetJS kalau ExcelJS belum load
+    _exportSheetJSFallback(data, name, sheetName, metodeMap);
+    return;
+  }
 
   const isNominal = k => k.includes('nominal') || k === 'total_bulan_ini';
-  const fmtRp = n => {
-    const num = +n || 0;
-    return 'Rp ' + num.toLocaleString('id-ID');
-  };
-  const keys    = Object.keys(data[0]);
-  const headers = keys.map(k => _LABEL_MAP[k] || k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
-  const dateStr = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
-  const title   = 'LAPORAN ' + name.replace(/_/g,' ').toUpperCase();
+  const keys      = Object.keys(data[0]);
+  const headers   = keys.map(k => _LABEL_MAP[k] || k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
+  const dateStr   = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+  const title     = 'LAPORAN ' + name.replace(/_/g,' ').toUpperCase();
+  const colCount  = keys.length;
 
-  // ── Hitung lebar kolom dari konten terpanjang ──
-  const colWidths = keys.map((k, ci) => {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Mitra Zakat Al-Iman';
+  const ws = wb.addWorksheet(sheetName.substring(0,31));
+
+  // ── Hitung lebar kolom ──
+  ws.columns = keys.map((k, ci) => {
     const headerLen = headers[ci].length;
-    const dataLens  = data.map(r => {
-      const v = r[k] ?? '';
-      return isNominal(k) ? fmtRp(v).length : String(v).length;
-    });
-    const maxLen = Math.max(headerLen, ...dataLens);
-    return { wch: Math.min(Math.max(maxLen + 2, 12), 50) };
+    const dataLens  = data.map(r => String(r[k] ?? '').length);
+    const max = Math.max(headerLen, ...dataLens);
+    return { width: Math.min(Math.max(max + 2, 10), 45) };
   });
 
-  // ── Susun AOA (array of arrays) ──
-  const aoa = [];
-  const R = {}; // simpan index baris penting
+  // ── Style helper ──
+  const styleTitle = {
+    font:      { name:'Calibri', size:14, bold:true, color:{argb:'FF1A5C2E'} },
+    alignment: { horizontal:'center', vertical:'middle' },
+    fill:      { type:'pattern', pattern:'solid', fgColor:{argb:'FFE8F5E9'} },
+    border:    { bottom:{style:'medium', color:{argb:'FF1A7340'}} }
+  };
+  const styleSub = {
+    font:      { name:'Calibri', size:10, italic:true, color:{argb:'FF666666'} },
+    alignment: { horizontal:'center' }
+  };
+  const styleHeader = {
+    font:      { name:'Calibri', size:11, bold:true, color:{argb:'FFFFFFFF'} },
+    alignment: { horizontal:'center', vertical:'middle', wrapText:true },
+    fill:      { type:'pattern', pattern:'solid', fgColor:{argb:'FF1A7340'} },
+    border:    {
+      top:    {style:'thin', color:{argb:'FFFFFFFF'}},
+      bottom: {style:'thin', color:{argb:'FFFFFFFF'}},
+      left:   {style:'thin', color:{argb:'FFFFFFFF'}},
+      right:  {style:'thin', color:{argb:'FFFFFFFF'}}
+    }
+  };
+  const styleDataEven = {
+    font:      { name:'Calibri', size:10 },
+    fill:      { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFFFFF'} },
+    border:    { bottom:{style:'hair', color:{argb:'FFD0E8D8'}}, right:{style:'hair', color:{argb:'FFD0E8D8'}} },
+    alignment: { vertical:'middle' }
+  };
+  const styleDataOdd = {
+    font:      { name:'Calibri', size:10 },
+    fill:      { type:'pattern', pattern:'solid', fgColor:{argb:'FFF2F9F5'} },
+    border:    { bottom:{style:'hair', color:{argb:'FFD0E8D8'}}, right:{style:'hair', color:{argb:'FFD0E8D8'}} },
+    alignment: { vertical:'middle' }
+  };
+  const styleTotal = {
+    font:      { name:'Calibri', size:10, bold:true, color:{argb:'FFFFFFFF'} },
+    fill:      { type:'pattern', pattern:'solid', fgColor:{argb:'FF2C3E50'} },
+    alignment: { vertical:'middle' },
+    border:    { top:{style:'medium', color:{argb:'FFFFFFFF'}} }
+  };
+  const styleNominal = (base) => ({ ...base,
+    alignment: { ...base.alignment, horizontal:'right' },
+    numFmt: '#,##0'
+  });
 
-  R.title   = aoa.push([title]) - 1;
-  R.printed = aoa.push(['Dicetak: ' + dateStr]) - 1;
-  aoa.push([]); // kosong
-  R.header  = aoa.push(headers) - 1;
-  R.dataStart = aoa.length;
+  const applyStyle = (cell, style) => Object.assign(cell, style);
 
-  // Data — nominal sebagai angka murni agar bisa SUM di Excel
-  data.forEach(row => {
-    aoa.push(keys.map(k => {
+  // ── Baris 1: Judul ──
+  const rTitle = ws.addRow([title]);
+  rTitle.height = 28;
+  ws.mergeCells(rTitle.number, 1, rTitle.number, colCount);
+  rTitle.getCell(1).style = styleTitle;
+
+  // ── Baris 2: Tanggal cetak ──
+  const rPrint = ws.addRow(['Dicetak: ' + dateStr]);
+  rPrint.height = 16;
+  ws.mergeCells(rPrint.number, 1, rPrint.number, colCount);
+  rPrint.getCell(1).style = styleSub;
+
+  // ── Baris 3: Kosong ──
+  ws.addRow([]);
+
+  // ── Baris 4: Header kolom ──
+  const rHeader = ws.addRow(headers);
+  rHeader.height = 20;
+  rHeader.eachCell(cell => { cell.style = styleHeader; });
+
+  // Freeze baris header ke bawah
+  ws.views = [{ state:'frozen', xSplit:0, ySplit:4, activeCell:'A5' }];
+
+  // ── Data rows ──
+  data.forEach((row, ri) => {
+    const vals = keys.map(k => {
       const v = row[k] ?? '';
-      return isNominal(k) ? (+v || 0) : String(v === null || v === undefined ? '' : v);
-    }));
+      return isNominal(k) ? (+v || 0) : String(v);
+    });
+    const r = ws.addRow(vals);
+    r.height = 16;
+    const baseStyle = ri % 2 === 0 ? styleDataEven : styleDataOdd;
+    keys.forEach((k, ci) => {
+      const cell = r.getCell(ci + 1);
+      if (isNominal(k)) {
+        cell.style = styleNominal(baseStyle);
+        cell.numFmt = '#,##0';
+      } else {
+        cell.style = { ...baseStyle };
+      }
+    });
   });
 
-  R.dataEnd = aoa.length - 1;
+  // ── Baris TOTAL ──
+  const totalVals = keys.map((k, i) => {
+    if (i === 0) return 'TOTAL (' + data.length + ' data)';
+    return isNominal(k) ? data.reduce((s,r) => s + (+r[k]||0), 0) : '';
+  });
+  const rTotal = ws.addRow(totalVals);
+  rTotal.height = 18;
+  keys.forEach((k, ci) => {
+    const cell = rTotal.getCell(ci + 1);
+    if (isNominal(k)) {
+      cell.style = { ...styleTotal, alignment:{horizontal:'right',vertical:'middle'}, numFmt:'#,##0' };
+      cell.numFmt = '#,##0';
+    } else {
+      cell.style = styleTotal;
+    }
+  });
 
-  // Baris TOTAL
-  R.total = aoa.push(
-    keys.map((k, i) => {
-      if (i === 0) return 'TOTAL (' + data.length + ' baris)';
-      return isNominal(k) ? data.reduce((s,r) => s + (+r[k]||0), 0) : '';
-    })
-  ) - 1;
-
-  // Ringkasan metode
+  // ── Ringkasan Metode Pembayaran ──
   const metodeEntries = Object.entries(metodeMap).filter(([,v]) => v > 0);
-  let R_metodeStart = -1, R_metodeEnd = -1;
   if (metodeEntries.length > 0) {
     const metodeOrder = ['tunai','transfer','qris','cek','lainnya'];
     metodeEntries.sort((a,b) => {
       const ia = metodeOrder.indexOf(a[0]), ib = metodeOrder.indexOf(b[0]);
-      return (ia<0?99:ia) - (ib<0?99:ib);
+      return (ia<0?99:ia)-(ib<0?99:ib);
     });
     const grandMetode = metodeEntries.reduce((s,[,v]) => s+v, 0);
-    aoa.push([]);
-    aoa.push(['RINGKASAN METODE PEMBAYARAN', '', '']);
-    aoa.push(['Metode', 'Total', 'Proporsi']);
-    R_metodeStart = aoa.length - 1;
-    metodeEntries.forEach(([m, v]) => {
+
+    ws.addRow([]);
+
+    // Judul ringkasan
+    const rMTitle = ws.addRow(['RINGKASAN METODE PEMBAYARAN']);
+    ws.mergeCells(rMTitle.number, 1, rMTitle.number, colCount);
+    rMTitle.getCell(1).style = {
+      font:  { name:'Calibri', size:11, bold:true, color:{argb:'FFFFFFFF'} },
+      fill:  { type:'pattern', pattern:'solid', fgColor:{argb:'FF1A4F7A'} },
+      alignment: { horizontal:'center', vertical:'middle' }
+    };
+    rMTitle.height = 18;
+
+    // Header ringkasan
+    const rMHead = ws.addRow(['Metode', 'Total', 'Proporsi']);
+    ['Metode','Total','Proporsi'].forEach((_,ci) => {
+      rMHead.getCell(ci+1).style = styleHeader;
+    });
+    rMHead.height = 18;
+
+    // Data metode
+    metodeEntries.forEach(([m, v], ri) => {
       const pct = grandMetode ? Math.round(v/grandMetode*100) : 0;
-      aoa.push([m.charAt(0).toUpperCase()+m.slice(1), v, pct + '%']);
+      const r = ws.addRow([m.charAt(0).toUpperCase()+m.slice(1), v, pct + '%']);
+      r.height = 16;
+      const bg = ri%2===0 ? 'FFF0F7FF' : 'FFE8F4FD';
+      [0,1,2].forEach(ci => {
+        const cell = r.getCell(ci+1);
+        cell.style = {
+          font: {name:'Calibri', size:10, bold: ci===1},
+          fill: {type:'pattern', pattern:'solid', fgColor:{argb:bg}},
+          alignment: {horizontal: ci===1?'right':ci===2?'center':'left', vertical:'middle'},
+          border: {bottom:{style:'hair', color:{argb:'FFD0D8E8'}}}
+        };
+        if (ci === 1) { cell.numFmt = '#,##0'; }
+      });
     });
-    R_metodeEnd = aoa.push(['TOTAL SEMUA', grandMetode, '100%']) - 1;
-  }
 
-  // ── Buat worksheet ──
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = colWidths;
-
-  // Merge baris judul & cetak sepanjang kolom
-  const lastCol = keys.length - 1;
-  ws['!merges'] = [
-    { s:{r:R.title,  c:0}, e:{r:R.title,  c:lastCol} },
-    { s:{r:R.printed,c:0}, e:{r:R.printed,c:lastCol} },
-  ];
-  if (R_metodeStart > 0) {
-    ws['!merges'].push({ s:{r:R_metodeStart-2,c:0}, e:{r:R_metodeStart-2,c:lastCol} });
-  }
-
-  // Format angka nominal: '#,##0' (tanpa Rp agar bisa dihitung, tapi angkanya rapi)
-  for (let ri = R.dataStart; ri <= R.total; ri++) {
-    keys.forEach((k, ci) => {
-      if (!isNominal(k)) return;
-      const ref = XLSX.utils.encode_cell({r: ri, c: ci});
-      if (ws[ref] && ws[ref].t === 'n') {
-        ws[ref].z = '#,##0';
-      }
+    // Total metode
+    const rMTotal = ws.addRow(['TOTAL SEMUA', grandMetode, '100%']);
+    rMTotal.height = 18;
+    [0,1,2].forEach(ci => {
+      const cell = rMTotal.getCell(ci+1);
+      cell.style = {
+        font: {name:'Calibri', size:10, bold:true, color:{argb:'FFFFFFFF'}},
+        fill: {type:'pattern', pattern:'solid', fgColor:{argb:'FF2C3E50'}},
+        alignment: {horizontal: ci===1?'right':ci===2?'center':'left', vertical:'middle'}
+      };
+      if (ci === 1) { cell.numFmt = '#,##0'; }
     });
   }
-  // Format nominal di ringkasan metode
-  if (R_metodeStart > 0) {
-    for (let ri = R_metodeStart; ri <= R_metodeEnd; ri++) {
-      const ref = XLSX.utils.encode_cell({r: ri, c: 1});
-      if (ws[ref] && ws[ref].t === 'n') ws[ref].z = '#,##0';
-    }
-  }
 
-  // Row height hint untuk baris judul
-  ws['!rows'] = [];
-  ws['!rows'][R.title]  = { hpt: 22 };
-  ws['!rows'][R.header] = { hpt: 18 };
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, sheetName.substring(0, 31));
-  XLSX.writeFile(wb, name + '_' + new Date().toISOString().split('T')[0] + '.xlsx');
+  // ── Download ──
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name + '_' + new Date().toISOString().split('T')[0] + '.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
   toast('File Excel berhasil didownload', 'ok');
+}
+
+// Fallback SheetJS kalau ExcelJS tidak tersedia
+function _exportSheetJSFallback(data, name, sheetName, metodeMap) {
+  if (typeof XLSX === 'undefined') { toast('Library Excel tidak tersedia','err'); return; }
+  const isNominal = k => k.includes('nominal') || k === 'total_bulan_ini';
+  const keys    = Object.keys(data[0]);
+  const headers = keys.map(k => _LABEL_MAP[k] || k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
+  const aoa = [
+    ['LAPORAN ' + name.replace(/_/g,' ').toUpperCase()],
+    ['Dicetak: ' + new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})],
+    [],
+    headers,
+    ...data.map(row => keys.map(k => isNominal(k) ? (+row[k]||0) : String(row[k]??''))),
+    keys.map((k,i) => i===0 ? 'TOTAL' : isNominal(k) ? data.reduce((s,r)=>s+(+r[k]||0),0) : '')
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = keys.map((k,ci) => ({
+    wch: Math.min(Math.max(Math.max(headers[ci].length, ...data.map(r=>String(r[k]??'').length)) + 2, 10), 45)
+  }));
+  ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:keys.length-1}},{s:{r:1,c:0},e:{r:1,c:keys.length-1}}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName.substring(0,31));
+  XLSX.writeFile(wb, name + '_' + new Date().toISOString().split('T')[0] + '.xlsx');
 }
 
 // ---- BUILD TEMPLATE EXCEL ----
