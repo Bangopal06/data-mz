@@ -136,128 +136,113 @@ function renderPagination(elId, total, page, size, onPage) {
 // ---- EXPORT EXCEL ----
 function exportExcel(data, name, sheetName='Data') {
   if (!data.length) { toast('Tidak ada data','warn'); return; }
-  const labelMap = { nama:'Nama', hp:'No. HP', alamat:'Alamat', kota:'Kota', program:'Program',
-    nominal_rutin:'Nominal Rutin', nominal:'Nominal', nominal_per_bulan:'Nominal/Bulan',
-    nominal_bayar:'Nominal Bayar', tgl_bayar:'Tgl Bayar', tgl_mulai:'Tgl Mulai',
-    status:'Status', status_bulan_ini:'Status Bulan Ini', petugas:'Petugas', catatan:'Catatan',
-    metode:'Metode', tgl:'Tanggal', sumber:'Sumber', nama_kotak:'Nama Kotak',
-    nama_toko:'Nama Toko', frekuensi:'Frekuensi', tgl_ambil_bulan_ini:'Tgl Ambil',
-    total_bulan_ini:'Total Bulan Ini', kecamatan:'Kecamatan', pemilik:'Pemilik' };
-  const keys = Object.keys(data[0]);
-  const headers = keys.map(k=>labelMap[k]||k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
-  const isNominal = k => k.includes('nominal')||k==='total_bulan_ini';
-  const totals = keys.map(k=>isNominal(k)?data.reduce((s,r)=>s+(+r[k]||0),0):null);
-  const fmtRp = n => 'Rp '+Number(n).toLocaleString('id-ID');
-  const headerCells = headers.map((h,i)=>
-    `<td style="background:#1a7340;color:white;font-weight:bold;text-align:center;padding:7px 12px;border:1px solid #fff;white-space:nowrap;font-size:11pt">${h}</td>`).join('');
-  const dataRows = data.map((row,ri)=>{
-    const bg=ri%2===0?'#ffffff':'#f2f9f5';
-    return '<tr>'+keys.map((k,ci)=>{
-      const v=row[k]??'';
-      if(isNominal(k)) return `<td style="padding:5px 10px;border:1px solid #d0e8d8;background:${bg};font-size:10pt;text-align:right">${(+v)||v?fmtRp(+v):'-'}</td>`;
-      return `<td style="padding:5px 10px;border:1px solid #d0e8d8;background:${bg};font-size:10pt">${v}</td>`;
-    }).join('')+'</tr>';
-  }).join('');
-  const totalCells = keys.map((k,i)=>{
-    if(i===0) return `<td style="background:#2c3e50;color:white;font-weight:bold;padding:6px 8px;font-size:10pt">TOTAL</td>`;
-    const t=totals[i];
-    return `<td style="background:#2c3e50;color:white;font-weight:bold;padding:6px 8px;font-size:10pt;text-align:right">${t!==null?fmtRp(t):''}</td>`;
-  }).join('');
-  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-  <head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>${sheetName}</x:Name></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>
-  <body><table>
-    <tr><td colspan="${headers.length}" style="font-size:14pt;font-weight:bold;text-align:center;padding:12px;background:#f0fdf4;border:2px solid #1a7340;color:#1a7340">LAPORAN ${name.replace(/_/g,' ').toUpperCase()}</td></tr>
-    <tr><td colspan="${headers.length}" style="font-size:9pt;text-align:center;padding:4px;color:#666">Dicetak: ${new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})}</td></tr>
-    <tr>${headerCells}</tr>${dataRows}<tr>${totalCells}</tr>
-  </table></body></html>`;
-  const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=name+'_'+new Date().toISOString().split('T')[0]+'.xls'; a.click(); URL.revokeObjectURL(a.href);
+  exportExcelWithMetodeSummary(data, name, sheetName, {});
 }
 
-// Wrapper export dengan ringkasan metode pembayaran di bawah
+// Label map untuk header kolom
+const _LABEL_MAP = {
+  nama:'Nama', hp:'No. HP', alamat:'Alamat', kota:'Kota', program:'Program',
+  nominal_rutin:'Nominal Rutin', nominal:'Nominal', nominal_per_bulan:'Nominal/Bulan',
+  nominal_bayar:'Nominal Bayar', tgl_bayar:'Tgl Bayar', tgl_mulai:'Tgl Mulai',
+  status:'Status', status_bulan_ini:'Status Bulan Ini', petugas:'Petugas', catatan:'Catatan',
+  metode:'Metode', metode_bayar:'Metode Bayar', tgl:'Tanggal', tanggal:'Tanggal',
+  sumber:'Sumber', nama_kotak:'Nama Kotak', nama_toko:'Nama Toko', frekuensi:'Frekuensi',
+  tgl_ambil_bulan_ini:'Tgl Ambil', total_bulan_ini:'Total Bulan Ini',
+  kecamatan:'Kecamatan', pemilik:'Pemilik', keterangan:'Keterangan', no:'No',
+  nama_donatur:'Nama Donatur', tgl_donasi:'Tgl Donasi', tgl_ambil:'Tgl Ambil',
+  jenis:'Jenis', kelas:'Kelas', halaqoh:'Halaqoh', amanah:'Amanah'
+};
+
+// Export ke .xlsx murni menggunakan SheetJS
 function exportExcelWithMetodeSummary(data, name, sheetName='Data', metodeMap={}) {
   if (!data.length) { toast('Tidak ada data','warn'); return; }
-  const labelMap = { nama:'Nama', hp:'No. HP', alamat:'Alamat', kota:'Kota', program:'Program',
-    nominal_rutin:'Nominal Rutin', nominal:'Nominal', nominal_per_bulan:'Nominal/Bulan',
-    nominal_bayar:'Nominal Bayar', tgl_bayar:'Tgl Bayar', tgl_mulai:'Tgl Mulai',
-    status:'Status', status_bulan_ini:'Status Bulan Ini', petugas:'Petugas', catatan:'Catatan',
-    metode:'Metode', tgl:'Tanggal', tanggal:'Tanggal', sumber:'Sumber', nama_kotak:'Nama Kotak',
-    nama_toko:'Nama Toko', frekuensi:'Frekuensi', tgl_ambil_bulan_ini:'Tgl Ambil',
-    total_bulan_ini:'Total Bulan Ini', kecamatan:'Kecamatan', pemilik:'Pemilik',
-    keterangan:'Keterangan', no:'No' };
+  if (typeof XLSX === 'undefined') { toast('Library Excel belum siap, coba lagi','warn'); return; }
+
+  const isNominal = k => k.includes('nominal') || k === 'total_bulan_ini';
+  const fmtRp = n => 'Rp ' + Number(n).toLocaleString('id-ID');
   const keys = Object.keys(data[0]);
-  const headers = keys.map(k=>labelMap[k]||k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
-  const isNominal = k => k.includes('nominal')||k==='total_bulan_ini';
-  const totals = keys.map(k=>isNominal(k)?data.reduce((s,r)=>s+(+r[k]||0),0):null);
-  const fmtRp = n => 'Rp '+Number(n).toLocaleString('id-ID');
-  const headerCells = headers.map(h=>
-    `<td style="background:#1a7340;color:white;font-weight:bold;text-align:center;padding:7px 12px;border:1px solid #fff;white-space:nowrap;font-size:11pt">${h}</td>`).join('');
-  const dataRows = data.map((row,ri)=>{
-    const bg=ri%2===0?'#ffffff':'#f2f9f5';
-    return '<tr>'+keys.map((k,ci)=>{
-      const v=row[k]??'';
-      if(isNominal(k)) return `<td style="padding:5px 10px;border:1px solid #d0e8d8;background:${bg};font-size:10pt;text-align:right">${(+v)||v?fmtRp(+v):'-'}</td>`;
-      return `<td style="padding:5px 10px;border:1px solid #d0e8d8;background:${bg};font-size:10pt">${v}</td>`;
-    }).join('')+'</tr>';
-  }).join('');
-  const totalCells = keys.map((k,i)=>{
-    if(i===0) return `<td style="background:#2c3e50;color:white;font-weight:bold;padding:6px 8px;font-size:10pt">TOTAL</td>`;
-    const t=totals[i];
-    return `<td style="background:#2c3e50;color:white;font-weight:bold;padding:6px 8px;font-size:10pt;text-align:right">${t!==null?fmtRp(t):''}</td>`;
-  }).join('');
+  const headers = keys.map(k => _LABEL_MAP[k] || k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
+  const dateStr = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
 
-  // Baris ringkasan metode pembayaran
-  const colCount = keys.length;
-  const metodeOrder = ['tunai','transfer','qris','cek','lainnya'];
-  const metodeIcon = {tunai:'💵',transfer:'🏦',qris:'📱',cek:'📄',lainnya:'💳'};
-  const sortedMetode = Object.entries(metodeMap).sort((a,b)=>{
-    const ia = metodeOrder.indexOf(a[0]); const ib = metodeOrder.indexOf(b[0]);
-    return (ia<0?99:ia)-(ib<0?99:ib);
+  // Buat array of arrays untuk sheet
+  const aoa = [];
+
+  // Baris judul
+  aoa.push(['LAPORAN ' + name.replace(/_/g,' ').toUpperCase()]);
+  aoa.push(['Dicetak: ' + dateStr]);
+  aoa.push([]); // kosong
+
+  // Header kolom
+  aoa.push(headers);
+
+  // Data rows
+  data.forEach(row => {
+    aoa.push(keys.map(k => {
+      const v = row[k] ?? '';
+      if (isNominal(k)) return +v || 0;
+      return v;
+    }));
   });
-  const grandMetode = sortedMetode.reduce((s,[,v])=>s+v,0);
 
-  const spaceCell = `<td style="padding:4px;border:none;background:white"></td>`;
-  const metodeHeaderRow = `<tr>
-    <td colspan="${colCount}" style="background:#1a4f7a;color:white;font-weight:bold;padding:8px 12px;font-size:11pt;text-align:center;border:1px solid #fff">
-      📊 Ringkasan Metode Pembayaran
-    </td></tr>`;
-  const metodeSubHeader = `<tr>
-    <td colspan="2" style="background:#1a7340;color:white;font-weight:bold;padding:6px 10px;font-size:10pt;border:1px solid #fff">Metode</td>
-    <td colspan="2" style="background:#1a7340;color:white;font-weight:bold;padding:6px 10px;font-size:10pt;text-align:right;border:1px solid #fff">Total</td>
-    <td colspan="2" style="background:#1a7340;color:white;font-weight:bold;padding:6px 10px;font-size:10pt;text-align:center;border:1px solid #fff">Proporsi</td>
-    <td colspan="${Math.max(1,colCount-6)}" style="background:#1a7340;border:1px solid #fff"></td>
-  </tr>`;
-  const metodeDataRows = sortedMetode.map(([m,v],ri)=>{
-    const pct = grandMetode ? Math.round(v/grandMetode*100) : 0;
-    const bg = ri%2===0?'#f0f7ff':'#e8f4fd';
-    const icon = metodeIcon[m]||'💳';
-    return `<tr>
-      <td colspan="2" style="padding:6px 10px;background:${bg};font-weight:600;font-size:10pt;border:1px solid #d0d8e8">${icon} ${m.charAt(0).toUpperCase()+m.slice(1)}</td>
-      <td colspan="2" style="padding:6px 10px;background:${bg};font-weight:700;font-size:10pt;text-align:right;border:1px solid #d0d8e8">${fmtRp(v)}</td>
-      <td colspan="2" style="padding:6px 10px;background:${bg};font-size:10pt;text-align:center;border:1px solid #d0d8e8">${pct}%</td>
-      <td colspan="${Math.max(1,colCount-6)}" style="background:${bg};border:1px solid #d0d8e8"></td>
-    </tr>`;
-  }).join('');
-  const metodeTotalRow = `<tr>
-    <td colspan="2" style="background:#2c3e50;color:white;font-weight:bold;padding:6px 10px;font-size:10pt;border:1px solid #fff">TOTAL SEMUA</td>
-    <td colspan="2" style="background:#2c3e50;color:white;font-weight:bold;padding:6px 10px;font-size:10pt;text-align:right;border:1px solid #fff">${fmtRp(grandMetode)}</td>
-    <td colspan="2" style="background:#2c3e50;color:white;font-weight:bold;padding:6px 10px;font-size:10pt;text-align:center;border:1px solid #fff">100%</td>
-    <td colspan="${Math.max(1,colCount-6)}" style="background:#2c3e50;border:1px solid #fff"></td>
-  </tr>`;
-  const spaceRow = `<tr><td colspan="${colCount}" style="padding:6px;background:white;border:none"></td></tr>`;
+  // Baris TOTAL
+  const totalRow = keys.map((k, i) => {
+    if (i === 0) return 'TOTAL';
+    if (isNominal(k)) return data.reduce((s,r) => s + (+r[k]||0), 0);
+    return '';
+  });
+  aoa.push(totalRow);
 
-  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-  <head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>${sheetName}</x:Name></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>
-  <body><table>
-    <tr><td colspan="${headers.length}" style="font-size:14pt;font-weight:bold;text-align:center;padding:12px;background:#f0fdf4;border:2px solid #1a7340;color:#1a7340">LAPORAN ${name.replace(/_/g,' ').toUpperCase()}</td></tr>
-    <tr><td colspan="${headers.length}" style="font-size:9pt;text-align:center;padding:4px;color:#666">Dicetak: ${new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})}</td></tr>
-    <tr>${headerCells}</tr>${dataRows}<tr>${totalCells}</tr>
-    ${spaceRow}${metodeHeaderRow}${metodeSubHeader}${metodeDataRows}${metodeTotalRow}
-  </table></body></html>`;
-  const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=name+'_'+new Date().toISOString().split('T')[0]+'.xls'; a.click(); URL.revokeObjectURL(a.href);
+  // Ringkasan metode (hanya kalau ada isinya)
+  const metodeEntries = Object.entries(metodeMap).filter(([,v]) => v > 0);
+  if (metodeEntries.length > 0) {
+    const metodeOrder = ['tunai','transfer','qris','cek','lainnya'];
+    metodeEntries.sort((a,b) => {
+      const ia = metodeOrder.indexOf(a[0]); const ib = metodeOrder.indexOf(b[0]);
+      return (ia<0?99:ia)-(ib<0?99:ib);
+    });
+    const grandMetode = metodeEntries.reduce((s,[,v]) => s+v, 0);
+
+    aoa.push([]); // kosong
+    aoa.push(['RINGKASAN METODE PEMBAYARAN']);
+    aoa.push(['Metode', 'Total', 'Proporsi']);
+    metodeEntries.forEach(([m, v]) => {
+      const pct = grandMetode ? Math.round(v/grandMetode*100) : 0;
+      aoa.push([m.charAt(0).toUpperCase()+m.slice(1), v, pct + '%']);
+    });
+    aoa.push(['TOTAL SEMUA', grandMetode, '100%']);
+  }
+
+  // Buat worksheet
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Set lebar kolom otomatis
+  const colWidths = keys.map((k, ci) => {
+    const max = Math.max(
+      (headers[ci]||'').length,
+      ...data.map(r => String(r[k]??'').length)
+    );
+    return { wch: Math.min(Math.max(max + 2, 10), 40) };
+  });
+  ws['!cols'] = colWidths;
+
+  // Format sel nominal sebagai angka (agar bisa dijumlah di Excel)
+  const startRow = 4; // 0-indexed: judul(0), cetak(1), kosong(2), header(3), data mulai(4)
+  data.forEach((row, ri) => {
+    keys.forEach((k, ci) => {
+      if (isNominal(k)) {
+        const cellRef = XLSX.utils.encode_cell({ r: startRow + ri, c: ci });
+        if (ws[cellRef]) {
+          ws[cellRef].t = 'n';
+          ws[cellRef].z = '#,##0';
+        }
+      }
+    });
+  });
+
+  // Buat workbook dan download
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName.substring(0, 31));
+  XLSX.writeFile(wb, name + '_' + new Date().toISOString().split('T')[0] + '.xlsx');
 }
 
 // ---- BUILD TEMPLATE EXCEL ----
